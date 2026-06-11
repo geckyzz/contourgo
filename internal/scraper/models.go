@@ -1,0 +1,144 @@
+package scraper
+
+import (
+	"fmt"
+	"strconv"
+	"strings"
+	"time"
+)
+
+type NyaaTorrent struct {
+	ID          int    `json:"id"`
+	Name        string `json:"name"`
+	Category    string `json:"category"`
+	Subcategory string `json:"subcategory"`
+	Comments    int    `json:"comments"`
+	Downloads   int    `json:"downloads"`
+	Seeders     int    `json:"seeders"`
+	Leechers    int    `json:"leechers"`
+	Size        string `json:"size"`
+	UploadDate  string `json:"uploadDate"`
+	Magnet      string `json:"magnet"`
+	Download    string `json:"download"`
+	InfoHash    string `json:"infoHash"`
+	Trusted     bool   `json:"trusted"`
+	Remake      bool   `json:"remake"`
+}
+
+type NyaaSearchResult struct {
+	Torrents   []NyaaTorrent `json:"torrents"`
+	Pagination struct {
+		CurrentPage  int `json:"currentPage"`
+		TotalPages   int `json:"totalPages"`
+		TotalResults int `json:"totalResults"`
+	} `json:"pagination"`
+}
+
+type NyaaComment struct {
+	ID        int    `json:"id"`
+	Pos       int    `json:"pos"`
+	Username  string `json:"username"`
+	Text      string `json:"text"`
+	Timestamp string `json:"timestamp"` // ISO 8601 string
+	Role      string `json:"role"`
+	Avatar    string `json:"avatar"`
+}
+
+type ATComment struct {
+	ID        string
+	TorrentID string
+	Title     string
+	Username  string
+	Message   string
+	Timestamp int64
+	Type      string // Torrent, Feedback, DDL, Question, etc.
+}
+
+func parseATTime(timeStr string) int64 {
+	timeStr = strings.TrimSpace(timeStr)
+	timeStr = strings.TrimPrefix(timeStr, "—")
+	timeStr = strings.TrimSpace(timeStr)
+
+	now := time.Now().UTC()
+	if strings.Contains(timeStr, "Today") {
+		parts := strings.Fields(timeStr)
+		if len(parts) >= 2 {
+			timePart := parts[1]
+			var hour, min int
+			fmt.Sscanf(timePart, "%d:%d", &hour, &min)
+			dt := time.Date(now.Year(), now.Month(), now.Day(), hour, min, 0, 0, time.UTC)
+			return dt.Unix()
+		}
+	} else if strings.Contains(timeStr, "Yesterday") {
+		parts := strings.Fields(timeStr)
+		if len(parts) >= 2 {
+			timePart := parts[1]
+			var hour, min int
+			fmt.Sscanf(timePart, "%d:%d", &hour, &min)
+			yest := now.AddDate(0, 0, -1)
+			dt := time.Date(yest.Year(), yest.Month(), yest.Day(), hour, min, 0, 0, time.UTC)
+			return dt.Unix()
+		}
+	} else {
+		var day, month, year, hour, min int
+		_, err := fmt.Sscanf(timeStr, "%d/%d/%d %d:%d", &day, &month, &year, &hour, &min)
+		if err == nil {
+			if year < 100 {
+				year += 2000
+			}
+			dt := time.Date(year, time.Month(month), day, hour, min, 0, 0, time.UTC)
+			return dt.Unix()
+		}
+	}
+	return now.Unix()
+}
+
+func DecodeNekoBTSnowflake(idStr string) int64 {
+	id, err := strconv.ParseUint(idStr, 10, 64)
+	if err != nil {
+		return time.Now().UnixMilli()
+	}
+
+	const epoch int64 = 1735689600000 // 2025-01-01T00:00:00.000Z
+	// Last 8 bits are Type (4 bits) and Increment (4 bits)
+	timestampMs := int64(id>>8) + epoch
+	return timestampMs
+}
+
+type NekoBTComment struct {
+	ID          string          `json:"id"`
+	Text        string          `json:"text"`
+	ReplyingTo  *string         `json:"replying_to"`
+	DisplayName string          `json:"display_name"`
+	UserID      string          `json:"user_id"`
+	PfpHash     *string         `json:"pfp_hash"`
+	CreatedAt   int64           `json:"created_at"` // Assuming Unix milliseconds
+	LastEdit    *int64          `json:"last_edit"`  // Unix timestamp in milliseconds
+	Deleted     bool            `json:"deleted"`
+	Children    []NekoBTComment `json:"children"`
+
+	// Derived fields
+	ParentText     string   `json:"-"`
+	TorrentID      string   `json:"-"`
+	Title          string   `json:"-"`
+	UploaderID     string   `json:"-"`
+	ContributorIDs []string `json:"-"`
+}
+
+type NekoBTTorrent struct {
+	ID           string `json:"id"`
+	Title        string `json:"title"`
+	CommentCount string `json:"comment_count"` // API returns string for some reason?
+	UploadedAt   int64  `json:"uploaded_at"`   // Unix ms
+}
+
+type NekoBTResponse struct {
+	Error   bool        `json:"error"`
+	Message string      `json:"message"`
+	Data    interface{} `json:"data"`
+}
+
+type NekoBTSearchResult struct {
+	Results []NekoBTTorrent `json:"results"`
+	More    bool            `json:"more"`
+}

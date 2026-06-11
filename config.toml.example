@@ -1,0 +1,48 @@
+[discord]
+token = "MTM....."
+server = "1326230604295180423" # server snowflake it host and to interacts
+announce.channel = "1234567890" # channel snowflake to announce at
+members.admins.allow = true # give all admins (other than the bot owner) access to the bot
+members.moderators.allow = false # give all members with manage message perm to access the bot
+members.others.allow = [] # list of user snowflakes to have access
+
+[config]
+monitor.by = "PT30M" # how long before next check to be attempted in ISO 8601 (or "30m")
+nyaa.proxy.url = "" # Your nyaa-api-worker base url
+animetosho.old.page.max = 5
+animetosho.new.page.max = 5
+nekobt.api.key = ""
+anirena.api.key = ""
+
+[monitor.nyaa.normies]
+keywords = ["fansubs", "raws"] # list of keywords to search on nyaa
+uploaders = ["username1", "username2"]
+sort = "comments" # comments, size, id, seeders, leechers, downloads
+order = "desc"    # desc, asc
+page.max = 0
+discord.embed.thumbnail = "https://i.imgur.com/some-nyaa-image.png"
+
+[monitor.sukebei.lewd]
+uploaders = ["uploader_name"]
+sort = "id"
+order = "desc"
+page.max = 0
+discord.embed.thumbnail = "https://i.imgur.com/some-sukebei-image.png"
+
+[monitor.animetosho.new.all]
+keywords = ["Gecko"]
+page.max = 5
+discord.embed.thumbnail = "https://i.imgur.com/some-at-new-image.png"
+
+[monitor.animetosho.old.all]
+keywords = ["Gecko", "geckyzz", "CicakRumah", "TokekHutan"]
+page.max = 5
+discord.embed.thumbnail = "https://i.imgur.com/some-at-image.png"
+
+[monitor.nekobt.my_group]
+groups = ["12345"] # Monitor specific group ID
+uploaders = ["67890"] # Monitor specific uploader ID
+media = ["s123", "tmdb:456", "tvdb:789"] # Monitor specific media ID, tmdb ID, or tvdb ID
+keywords = ["some search term"] # Optional keyword search fallback
+sort = "comments" # best, latest, oldest, rss, seeders, downloads, comments, etc.
+discord.embed.thumbnail = "https://i.imgur.com/some-nekobt-image.png"
