@@ -95,18 +95,19 @@ For initial database seeding without spamming Discord:
 
 You can define multiple monitors per service.
 
-| Option                      | Description                          | Supported Services            |
-| :-------------------------- | :----------------------------------- | :---------------------------- |
-| `keywords`                  | List of search strings               | All                           |
-| `excludes`                  | List of glob patterns to skip        | All                           |
-| `uploaders`                 | List of uploader usernames or IDs    | Nyaa/Sukebei, nekoBT, AniRena |
-| `groups`                    | List of Group IDs or Group Slugs     | nekoBT, AniRena, TsukiHime    |
-| `media`                     | List of Media IDs                    | nekoBT, TsukiHime             |
-| `sort`                      | Sorting method (see below)           | Nyaa/Sukebei, nekoBT, AniRena |
-| `order`                     | `asc` or `desc`                      | Nyaa/Sukebei, AniRena         |
-| `page.max`                  | Max pages to scan per check          | All                           |
-| `discord.embed.author.url`  | Static icon for the embed author     | All                           |
-| `discord.fields.comment_id` | Toggle rendering comment ID in embed | All                           |
+| Option                               | Description                                          | Supported Services            |
+| :----------------------------------- | :--------------------------------------------------- | :---------------------------- |
+| `keywords`                           | List of search strings                               | All                           |
+| `excludes`                           | List of glob patterns to skip                        | All                           |
+| `uploaders`                          | List of uploader usernames or IDs                    | Nyaa/Sukebei, nekoBT, AniRena |
+| `groups`                             | List of Group IDs or Group Slugs                     | nekoBT, AniRena, TsukiHime    |
+| `media`                              | List of Media IDs                                    | nekoBT, TsukiHime             |
+| `sort`                               | Sorting method (see below)                           | Nyaa/Sukebei, nekoBT, AniRena |
+| `order`                              | `asc` or `desc`                                      | Nyaa/Sukebei, AniRena         |
+| `page.max`                           | Max pages to scan per check                          | All                           |
+| `discord.embed.author.url`           | Static icon for the embed author                     | All                           |
+| `discord.fields.comment_id`          | Toggle rendering comment ID in embed                 | All                           |
+| `discord.display.user_content_image` | Toggle extracting images from comment text to embeds | All                           |
 
 **Supported Services**: `nyaa`, `sukebei`, `animetosho_old`, `animetosho_new`, `nekobt`, `anirena`,
 `tsukihime`.

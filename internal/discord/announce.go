@@ -13,7 +13,7 @@ import (
 	"github.com/geckyzz/contourgo/internal/scraper"
 )
 
-func (b *DiscordBot) AnnounceNyaaComment(channelID string, service, torrentID, torrentTitle string, comment scraper.NyaaComment, authorIconURL string, showCommentID bool) error {
+func (b *DiscordBot) AnnounceNyaaComment(channelID string, service, torrentID, torrentTitle string, comment scraper.NyaaComment, authorIconURL string, showCommentID bool, resolveUserContentImage bool) error {
 	targetChannel := b.AnnounceChannel
 	if channelID != "" {
 		targetChannel = channelID
@@ -79,12 +79,14 @@ func (b *DiscordBot) AnnounceNyaaComment(channelID string, service, torrentID, t
 		}
 	}
 
-	if imgURL := extractImageURL(comment.Text); imgURL != "" {
-		if strings.HasPrefix(imgURL, "/") {
-			imgURL = "https://" + siteBase + imgURL
+	if resolveUserContentImage {
+		if imgURL := extractImageURL(comment.Text); imgURL != "" {
+			if strings.HasPrefix(imgURL, "/") {
+				imgURL = "https://" + siteBase + imgURL
+			}
+			embed.Image = &discordgo.MessageEmbedImage{URL: imgURL}
+			embed.Description = ""
 		}
-		embed.Image = &discordgo.MessageEmbedImage{URL: imgURL}
-		embed.Description = ""
 	}
 
 	if userAvatarURL != "" && !strings.HasSuffix(userAvatarURL, "default.png") {
@@ -105,7 +107,7 @@ func (b *DiscordBot) AnnounceNyaaComment(channelID string, service, torrentID, t
 	return err
 }
 
-func (b *DiscordBot) AnnounceATComment(channelID string, service string, torrentID, torrentTitle string, comment scraper.ATComment, authorIconURL string, showCommentID bool) error {
+func (b *DiscordBot) AnnounceATComment(channelID string, service string, torrentID, torrentTitle string, comment scraper.ATComment, authorIconURL string, showCommentID bool, resolveUserContentImage bool) error {
 	targetChannel := b.AnnounceChannel
 	if channelID != "" {
 		targetChannel = channelID
@@ -131,9 +133,11 @@ func (b *DiscordBot) AnnounceATComment(channelID string, service string, torrent
 	}
 
 	var embedImage *discordgo.MessageEmbedImage
-	if imgURL := extractImageURL(comment.Message); imgURL != "" {
-		embedImage = &discordgo.MessageEmbedImage{URL: imgURL}
-		description = ""
+	if resolveUserContentImage {
+		if imgURL := extractImageURL(comment.Message); imgURL != "" {
+			embedImage = &discordgo.MessageEmbedImage{URL: imgURL}
+			description = ""
+		}
 	}
 
 	embedColor := 0x52d345
@@ -171,7 +175,7 @@ func (b *DiscordBot) AnnounceATComment(channelID string, service string, torrent
 	return err
 }
 
-func (b *DiscordBot) AnnounceNekoBTComment(channelID string, torrentTitle string, comment scraper.NekoBTComment, authorIconURL string, showCommentID bool) error {
+func (b *DiscordBot) AnnounceNekoBTComment(channelID string, torrentTitle string, comment scraper.NekoBTComment, authorIconURL string, showCommentID bool, resolveUserContentImage bool) error {
 	targetChannel := b.AnnounceChannel
 	if channelID != "" {
 		targetChannel = channelID
@@ -225,12 +229,14 @@ func (b *DiscordBot) AnnounceNekoBTComment(channelID string, torrentTitle string
 		})
 	}
 
-	if imgURL := extractImageURL(comment.Text); imgURL != "" {
-		if strings.HasPrefix(imgURL, "/") {
-			imgURL = "https://nekobt.to" + imgURL
+	if resolveUserContentImage {
+		if imgURL := extractImageURL(comment.Text); imgURL != "" {
+			if strings.HasPrefix(imgURL, "/") {
+				imgURL = "https://nekobt.to" + imgURL
+			}
+			embed.Image = &discordgo.MessageEmbedImage{URL: imgURL}
+			embed.Description = ""
 		}
-		embed.Image = &discordgo.MessageEmbedImage{URL: imgURL}
-		embed.Description = ""
 	}
 
 	if comment.CreatedAt > 0 {
@@ -260,7 +266,7 @@ func (b *DiscordBot) AnnounceNekoBTComment(channelID string, torrentTitle string
 	return err
 }
 
-func (b *DiscordBot) AnnounceTsukihimeComment(channelID string, torrentTitle string, comment scraper.TsukihimeComment, parentText string, authorIconURL string, showCommentID bool) error {
+func (b *DiscordBot) AnnounceTsukihimeComment(channelID string, torrentTitle string, comment scraper.TsukihimeComment, parentText string, authorIconURL string, showCommentID bool, resolveUserContentImage bool) error {
 	targetChannel := b.AnnounceChannel
 	if channelID != "" {
 		targetChannel = channelID
@@ -308,12 +314,14 @@ func (b *DiscordBot) AnnounceTsukihimeComment(channelID string, torrentTitle str
 		})
 	}
 
-	if imgURL := extractImageURL(comment.GetText()); imgURL != "" {
-		if strings.HasPrefix(imgURL, "/") {
-			imgURL = "https://tsukihime.org" + imgURL
+	if resolveUserContentImage {
+		if imgURL := extractImageURL(comment.GetText()); imgURL != "" {
+			if strings.HasPrefix(imgURL, "/") {
+				imgURL = "https://tsukihime.org" + imgURL
+			}
+			embed.Image = &discordgo.MessageEmbedImage{URL: imgURL}
+			embed.Description = ""
 		}
-		embed.Image = &discordgo.MessageEmbedImage{URL: imgURL}
-		embed.Description = ""
 	}
 
 	if comment.CreatedAt != "" {
@@ -402,7 +410,7 @@ func resolveNekoBTMentions(text string) string {
 	return nekoBTMentionRegex.ReplaceAllString(text, "[@$1](https://nekobt.moe/u/$1)")
 }
 
-func (b *DiscordBot) AnnounceAnirenaComment(channelID, torrentID, torrentTitle string, comment scraper.AnirenaComment, authorIconURL string, torrentUploader string, showCommentID bool) error {
+func (b *DiscordBot) AnnounceAnirenaComment(channelID, torrentID, torrentTitle string, comment scraper.AnirenaComment, authorIconURL string, torrentUploader string, showCommentID bool, resolveUserContentImage bool) error {
 	targetChannel := b.AnnounceChannel
 	if channelID != "" {
 		targetChannel = channelID
@@ -417,9 +425,11 @@ func (b *DiscordBot) AnnounceAnirenaComment(channelID, torrentID, torrentTitle s
 	}
 
 	var embedImage *discordgo.MessageEmbedImage
-	if imgURL := extractImageURL(comment.Body); imgURL != "" {
-		embedImage = &discordgo.MessageEmbedImage{URL: imgURL}
-		description = ""
+	if resolveUserContentImage {
+		if imgURL := extractImageURL(comment.Body); imgURL != "" {
+			embedImage = &discordgo.MessageEmbedImage{URL: imgURL}
+			description = ""
+		}
 	}
 
 	authorName := comment.Username

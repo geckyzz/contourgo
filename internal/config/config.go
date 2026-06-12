@@ -104,8 +104,13 @@ type PageConfig struct {
 }
 
 type MonitorDiscordConfig struct {
-	Embed  MonitorEmbedConfig  `toml:"embed"`
-	Fields MonitorFieldsConfig `toml:"fields"`
+	Embed   MonitorEmbedConfig   `toml:"embed"`
+	Fields  MonitorFieldsConfig  `toml:"fields"`
+	Display MonitorDisplayConfig `toml:"display"`
+}
+
+type MonitorDisplayConfig struct {
+	UserContentImage bool `toml:"user_content_image"`
 }
 
 type MonitorFieldsConfig struct {

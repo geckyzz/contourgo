@@ -22,6 +22,7 @@ order = "desc"    # desc, asc
 page.max = 0
 discord.embed.author.url = "https://i.imgur.com/some-nyaa-image.png"
 discord.fields.comment_id = false
+discord.display.user_content_image = false
 
 [monitor.sukebei.lewd]
 uploaders = ["uploader_name"]
