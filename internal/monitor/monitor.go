@@ -263,25 +263,20 @@ func (m *Monitor) checkNyaaSukebeiService(service string, force bool) {
 			order = "desc"
 		}
 
-		// Create targets: combination of uploaders and keywords
+		// Create targets: split uploaders and keywords
 		type target struct {
 			user string
 			q    string
 		}
 		var targets []target
 
-		if len(monitorCfg.Uploaders) > 0 {
-			for _, u := range monitorCfg.Uploaders {
-				if len(monitorCfg.Keywords) > 0 {
-					for _, k := range monitorCfg.Keywords {
-						targets = append(targets, target{user: u, q: k})
-					}
-				} else {
-					targets = append(targets, target{user: u, q: ""})
-				}
+		for _, u := range monitorCfg.Uploaders {
+			if u != "" {
+				targets = append(targets, target{user: u, q: ""})
 			}
-		} else if len(monitorCfg.Keywords) > 0 {
-			for _, k := range monitorCfg.Keywords {
+		}
+		for _, k := range monitorCfg.Keywords {
+			if k != "" {
 				targets = append(targets, target{user: "", q: k})
 			}
 		}
@@ -417,6 +412,9 @@ func (m *Monitor) checkAnimeToshoService(service string, force bool) {
 		hasDueMonitors = true
 		m.updateLastCheck(service, key)
 		log.Printf("[%s][%s] Processing monitor", svcName, key)
+		if monitorCfg.Page.Max > maxPagesCfg {
+			maxPagesCfg = monitorCfg.Page.Max
+		}
 		if key == "feedback" {
 			continue // Handled separately
 		}
@@ -550,6 +548,7 @@ func (m *Monitor) checkAnirena(force bool) {
 			order = "desc"
 		}
 
+		// Create targets: split uploaders, groups, and keywords
 		type target struct {
 			user  string
 			group string
@@ -557,30 +556,18 @@ func (m *Monitor) checkAnirena(force bool) {
 		}
 		var targets []target
 
-		if len(monitorCfg.Uploaders) > 0 {
-			for _, u := range monitorCfg.Uploaders {
-				if len(monitorCfg.Keywords) > 0 {
-					for _, k := range monitorCfg.Keywords {
-						targets = append(targets, target{user: u, q: k})
-					}
-				} else {
-					targets = append(targets, target{user: u, q: ""})
-				}
+		for _, u := range monitorCfg.Uploaders {
+			if u != "" {
+				targets = append(targets, target{user: u})
 			}
 		}
-		if len(monitorCfg.Groups) > 0 {
-			for _, g := range monitorCfg.Groups {
-				if len(monitorCfg.Keywords) > 0 {
-					for _, k := range monitorCfg.Keywords {
-						targets = append(targets, target{group: g, q: k})
-					}
-				} else {
-					targets = append(targets, target{group: g, q: ""})
-				}
+		for _, g := range monitorCfg.Groups {
+			if g != "" {
+				targets = append(targets, target{group: g})
 			}
 		}
-		if len(monitorCfg.Uploaders) == 0 && len(monitorCfg.Groups) == 0 && len(monitorCfg.Keywords) > 0 {
-			for _, k := range monitorCfg.Keywords {
+		for _, k := range monitorCfg.Keywords {
+			if k != "" {
 				targets = append(targets, target{q: k})
 			}
 		}
