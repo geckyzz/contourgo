@@ -81,36 +81,36 @@ For initial database seeding without spamming Discord:
 
 ### Global Config
 
-| Key                        | Description                                      | Default    |
-| :------------------------- | :----------------------------------------------- | :--------- |
-| `discord.token`            | Your Discord Bot Token                           | (Required) |
-| `discord.server`           | Target server snowflake for instant command sync | (Optional) |
-| `discord.announce.channel` | Discord channel snowflake for notifications      | (Required) |
-| `discord.embed.author.url`           | Global default static icon for the embed author       | (Optional) |
-| `discord.fields.comment_id`          | Global default to toggle rendering comment ID         | `false`    |
-| `discord.display.user_content_image` | Global default to toggle extracting user content images| `false`    |
-| `config.monitor.by`                  | Check interval (e.g., `PT10M` or `10m`)               | `PT30M`    |
-| `config.nyaa.proxy.url`              | URL to your Nyaa/Sukebei API Proxy                    | (Required) |
-| `config.nekobt.api.key`              | Your nekoBT SSID API key                              | (Optional) |
-| `config.anirena.api.key`             | Your AniRena API key                                  | (Optional) |
+| Key                                  | Description                                             | Default    |
+| :----------------------------------- | :------------------------------------------------------ | :--------- |
+| `discord.token`                      | Your Discord Bot Token                                  | (Required) |
+| `discord.server`                     | Target server snowflake for instant command sync        | (Optional) |
+| `discord.announce.channel`           | Discord channel snowflake for notifications             | (Required) |
+| `discord.embed.author.url`           | Global default static icon for the embed author         | (Optional) |
+| `discord.fields.comment_id`          | Global default to toggle rendering comment ID           | `false`    |
+| `discord.display.user_content_image` | Global default to toggle extracting user content images | `false`    |
+| `config.monitor.by`                  | Check interval (e.g., `PT10M` or `10m`)                 | `PT30M`    |
+| `config.nyaa.proxy.url`              | URL to your Nyaa/Sukebei API Proxy                      | (Required) |
+| `config.nekobt.api.key`              | Your nekoBT SSID API key                                | (Optional) |
+| `config.anirena.api.key`             | Your AniRena API key                                    | (Optional) |
 
 ### Monitor Blocks (`[monitors.<service>.<key>]`)
 
 You can define multiple monitors per service.
 
-| Option                               | Description                                                               | Supported Services            |
-| :----------------------------------- | :------------------------------------------------------------------------ | :---------------------------- |
-| `keywords`                           | List of search strings                                                    | All                           |
-| `excludes`                           | List of glob patterns to skip                                             | All                           |
-| `uploaders`                          | List of uploader usernames or IDs                                         | Nyaa/Sukebei, nekoBT, AniRena |
-| `groups`                             | List of Group IDs or Group Slugs                                          | nekoBT, AniRena, TsukiHime    |
-| `media`                              | List of Media IDs                                                         | nekoBT, TsukiHime             |
-| `sort`                               | Sorting method (see below)                                                | Nyaa/Sukebei, nekoBT, AniRena |
-| `order`                              | `asc` or `desc`                                                           | Nyaa/Sukebei, AniRena         |
-| `page.max`                           | Max pages to scan per check                                               | All                           |
-| `discord.embed.author.url`           | Static icon for the embed author (overrides global default)               | All                           |
-| `discord.fields.comment_id`          | Toggle rendering comment ID in embed (overrides global default)           | All                           |
-| `discord.display.user_content_image` | Toggle extracting images from comment text to embeds (overrides global)   | All                           |
+| Option                               | Description                                                             | Supported Services            |
+| :----------------------------------- | :---------------------------------------------------------------------- | :---------------------------- |
+| `keywords`                           | List of search strings                                                  | All                           |
+| `excludes`                           | List of glob patterns to skip                                           | All                           |
+| `uploaders`                          | List of uploader usernames or IDs                                       | Nyaa/Sukebei, nekoBT, AniRena |
+| `groups`                             | List of Group IDs or Group Slugs                                        | nekoBT, AniRena, TsukiHime    |
+| `media`                              | List of Media IDs                                                       | nekoBT, TsukiHime             |
+| `sort`                               | Sorting method (see below)                                              | Nyaa/Sukebei, nekoBT, AniRena |
+| `order`                              | `asc` or `desc`                                                         | Nyaa/Sukebei, AniRena         |
+| `page.max`                           | Max pages to scan per check                                             | All                           |
+| `discord.embed.author.url`           | Static icon for the embed author (overrides global default)             | All                           |
+| `discord.fields.comment_id`          | Toggle rendering comment ID in embed (overrides global default)         | All                           |
+| `discord.display.user_content_image` | Toggle extracting images from comment text to embeds (overrides global) | All                           |
 
 **Supported Services**: `nyaa`, `sukebei`, `animetosho_old`, `animetosho_new`, `nekobt`, `anirena`,
 `tsukihime`.
