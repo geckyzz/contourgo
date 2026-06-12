@@ -829,7 +829,7 @@ func (b *DiscordBot) handleSlashTest(s *discordgo.Session, i *discordgo.Interact
 			}
 
 			firstComment := comments[0]
-			err = b.AnnounceAnirenaComment(i.ChannelID, targetTorrent.ID, targetTorrent.FullTitle(), firstComment, "")
+			err = b.AnnounceAnirenaComment(i.ChannelID, targetTorrent.ID, targetTorrent.FullTitle(), firstComment, "", targetTorrent.Uploader)
 			if err != nil {
 				b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ Error creating test embed: %v", err))
 			} else {

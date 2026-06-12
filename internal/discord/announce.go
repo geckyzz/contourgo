@@ -275,7 +275,7 @@ func resolveNekoBTMentions(text string) string {
 	return nekoBTMentionRegex.ReplaceAllString(text, "[@$1](https://nekobt.moe/u/$1)")
 }
 
-func (b *DiscordBot) AnnounceAnirenaComment(channelID, torrentID, torrentTitle string, comment scraper.AnirenaComment, embedThumbnail string) error {
+func (b *DiscordBot) AnnounceAnirenaComment(channelID, torrentID, torrentTitle string, comment scraper.AnirenaComment, embedThumbnail string, torrentUploader string) error {
 	targetChannel := b.AnnounceChannel
 	if channelID != "" {
 		targetChannel = channelID
@@ -290,7 +290,9 @@ func (b *DiscordBot) AnnounceAnirenaComment(channelID, torrentID, torrentTitle s
 	}
 
 	authorName := comment.Username
-	if comment.Role != "" {
+	if torrentUploader != "" && strings.EqualFold(comment.Username, torrentUploader) {
+		authorName = fmt.Sprintf("%s (Uploader)", comment.Username)
+	} else if comment.Role != "" && !strings.EqualFold(comment.Role, "user") {
 		authorName = fmt.Sprintf("%s (%s)", comment.Username, comment.Role)
 	}
 

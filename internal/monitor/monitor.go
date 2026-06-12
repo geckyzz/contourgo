@@ -488,7 +488,7 @@ func (m *Monitor) checkAnirena() {
 							if !m.db.IsCommentStored("anirena", t.ID, c.ID) {
 								if !m.DumpComments {
 									log.Printf("%s Announcing comment %s by %s on torrent %s", prefix, c.ID, c.Username, t.ID)
-									err := m.bot.AnnounceAnirenaComment("", t.ID, t.FullTitle(), c, monitorCfg.Discord.Embed.Thumbnail)
+									err := m.bot.AnnounceAnirenaComment("", t.ID, t.FullTitle(), c, monitorCfg.Discord.Embed.Thumbnail, t.Uploader)
 									if err != nil {
 										log.Printf("%s Error announcing comment: %v", prefix, err)
 									}
