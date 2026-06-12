@@ -13,11 +13,23 @@ func (b *DiscordBot) registerSlashCommands(s *discordgo.Session) {
 	commands := []*discordgo.ApplicationCommand{
 		{
 			Name:        "status",
-			Description: "Show bot status and database statistics",
+			Description: "Show bot status, system diagnostics, and database statistics",
 		},
 		{
 			Name:        "reload",
-			Description: "Force a manual check of all monitors immediately",
+			Description: "Reload configuration or trigger a manual monitors check",
+			Options: []*discordgo.ApplicationCommandOption{
+				{
+					Type:        discordgo.ApplicationCommandOptionString,
+					Name:        "target",
+					Description: "What to reload (default: monitors)",
+					Required:    false,
+					Choices: []*discordgo.ApplicationCommandOptionChoice{
+						{Name: "Monitors check (force check now)", Value: "monitors"},
+						{Name: "Configuration file (reload config.toml)", Value: "config"},
+					},
+				},
+			},
 		},
 		{
 			Name:        "monitors",
@@ -101,20 +113,8 @@ func (b *DiscordBot) registerSlashCommands(s *discordgo.Session) {
 			Description: "Show help menu",
 		},
 		{
-			Name:        "stats",
-			Description: "Show detailed monitoring statistics",
-		},
-		{
-			Name:        "refresh",
-			Description: "Force reload configuration from config.toml",
-		},
-		{
 			Name:        "ping",
 			Description: "Check bot health and latency",
-		},
-		{
-			Name:        "info",
-			Description: "Show bot version, database size, and memory usage",
 		},
 		{
 			Name:        "logs",
@@ -350,11 +350,8 @@ func (b *DiscordBot) onInteractionCreate(s *discordgo.Session, i *discordgo.Inte
 		log.Printf("[Action] Processing status request")
 		b.handleSlashStatus(s, i)
 	case "reload":
-		log.Printf("[Action] Processing manual reload request")
-		b.handleSlashReload(s, i)
-	case "refresh":
-		log.Printf("[Action] Processing config refresh request")
-		b.handleSlashRefresh(s, i)
+		log.Printf("[Action] Processing reload request")
+		b.handleSlashReload(s, i, optionMap)
 	case "monitors":
 		log.Printf("[Action] Listing configured monitors")
 		b.handleSlashMonitors(s, i)
@@ -367,15 +364,9 @@ func (b *DiscordBot) onInteractionCreate(s *discordgo.Session, i *discordgo.Inte
 	case "help":
 		log.Printf("[Action] Processing help command")
 		b.handleSlashHelp(s, i)
-	case "stats":
-		log.Printf("[Action] Processing stats command")
-		b.handleSlashStats(s, i)
 	case "ping":
 		log.Printf("[Action] Processing ping command")
 		b.handleSlashPing(s, i)
-	case "info":
-		log.Printf("[Action] Processing info command")
-		b.handleSlashInfo(s, i)
 	case "logs":
 		log.Printf("[Action] Processing logs command")
 		b.handleSlashLogs(s, i, optionMap)

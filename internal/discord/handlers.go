@@ -49,15 +49,28 @@ func (b *DiscordBot) handleSlashStatus(s *discordgo.Session, i *discordgo.Intera
 		totalMonitors += len(sub)
 	}
 
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+
+	dbFile, err := os.Stat("bot.db")
+	dbSize := "Unknown"
+	if err == nil {
+		dbSize = fmt.Sprintf("%.2f MB", float64(dbFile.Size())/1024/1024)
+	}
+
 	embed := &discordgo.MessageEmbed{
-		Title: "📊 Bot Status",
-		Color: 0x00FF00,
+		Title: "📊 Bot Status & Diagnostics",
+		Color: 0x2ecc71,
 		Fields: []*discordgo.MessageEmbedField{
 			{Name: "Active Monitors", Value: fmt.Sprintf("%d", totalMonitors), Inline: true},
 			{Name: "Torrents Tracked", Value: fmt.Sprintf("%d", torrents), Inline: true},
 			{Name: "Comments Stored", Value: fmt.Sprintf("%d", comments), Inline: true},
 			{Name: "Check Interval", Value: b.Config.Config.Monitor.By, Inline: true},
-			{Name: "SQLite Database", Value: "Connected (SQLite)", Inline: true},
+			{Name: "Database Size", Value: dbSize, Inline: true},
+			{Name: "Uptime", Value: fmt.Sprintf("<t:%d:R>", b.StartTime.Unix()), Inline: true},
+			{Name: "Memory (Alloc / Sys)", Value: fmt.Sprintf("%.2f MB / %.2f MB", float64(m.Alloc)/1024/1024, float64(m.Sys)/1024/1024), Inline: true},
+			{Name: "Goroutines", Value: strconv.Itoa(runtime.NumGoroutine()), Inline: true},
+			{Name: "Environment", Value: fmt.Sprintf("Go %s (%s)", runtime.Version(), runtime.GOOS), Inline: true},
 		},
 		Timestamp: time.Now().Format(time.RFC3339),
 	}
@@ -71,7 +84,47 @@ func (b *DiscordBot) handleSlashStatus(s *discordgo.Session, i *discordgo.Intera
 	})
 }
 
-func (b *DiscordBot) handleSlashReload(s *discordgo.Session, i *discordgo.InteractionCreate) {
+func (b *DiscordBot) handleSlashReload(s *discordgo.Session, i *discordgo.InteractionCreate, optionMap map[string]*discordgo.ApplicationCommandInteractionDataOption) {
+	target := "monitors"
+	if opt, ok := optionMap["target"]; ok {
+		target = opt.StringValue()
+	}
+
+	if target == "config" {
+		newCfg, err := config.LoadConfig(b.ConfigPath)
+		if err != nil {
+			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Embeds: []*discordgo.MessageEmbed{
+						{
+							Description: fmt.Sprintf("❌ Error reloading config: %v", err),
+							Color:       0xFF0000,
+						},
+					},
+				},
+			})
+			return
+		}
+
+		// Update existing config in-place
+		*b.Config = *newCfg
+
+		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Embeds: []*discordgo.MessageEmbed{
+					{
+						Description: "✅ Configuration reloaded successfully.",
+						Color:       0x00FF00,
+					},
+				},
+			},
+		})
+		return
+	}
+
+	// Default to monitors force check
 	var content string
 	var color int
 	select {
@@ -94,69 +147,6 @@ func (b *DiscordBot) handleSlashReload(s *discordgo.Session, i *discordgo.Intera
 					Color:       color,
 				},
 			},
-		},
-	})
-}
-
-func (b *DiscordBot) handleSlashRefresh(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	newCfg, err := config.LoadConfig(b.ConfigPath)
-	if err != nil {
-		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseChannelMessageWithSource,
-			Data: &discordgo.InteractionResponseData{
-				Embeds: []*discordgo.MessageEmbed{
-					{
-						Description: fmt.Sprintf("❌ Error reloading config: %v", err),
-						Color:       0xFF0000,
-					},
-				},
-			},
-		})
-		return
-	}
-
-	// Update existing config in-place
-	*b.Config = *newCfg
-
-	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-		Type: discordgo.InteractionResponseChannelMessageWithSource,
-		Data: &discordgo.InteractionResponseData{
-			Embeds: []*discordgo.MessageEmbed{
-				{
-					Description: "✅ Configuration reloaded successfully.",
-					Color:       0x00FF00,
-				},
-			},
-		},
-	})
-}
-
-func (b *DiscordBot) handleSlashStats(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	torrents, comments, err := b.DB.GetStats()
-	if err != nil {
-		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseChannelMessageWithSource,
-			Data: &discordgo.InteractionResponseData{
-				Content: fmt.Sprintf("❌ Error retrieving statistics: %v", err),
-			},
-		})
-		return
-	}
-
-	embed := &discordgo.MessageEmbed{
-		Title: "📈 Detailed Statistics",
-		Color: 0x3498db,
-		Fields: []*discordgo.MessageEmbedField{
-			{Name: "Total Torrents Tracked", Value: strconv.Itoa(torrents), Inline: true},
-			{Name: "Total Comments Stored", Value: strconv.Itoa(comments), Inline: true},
-		},
-		Timestamp: time.Now().Format(time.RFC3339),
-	}
-
-	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-		Type: discordgo.InteractionResponseChannelMessageWithSource,
-		Data: &discordgo.InteractionResponseData{
-			Embeds: []*discordgo.MessageEmbed{embed},
 		},
 	})
 }
@@ -202,37 +192,6 @@ func (b *DiscordBot) handleSlashPing(s *discordgo.Session, i *discordgo.Interact
 				Inline: true,
 			},
 		},
-	}
-
-	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-		Type: discordgo.InteractionResponseChannelMessageWithSource,
-		Data: &discordgo.InteractionResponseData{
-			Embeds: []*discordgo.MessageEmbed{embed},
-		},
-	})
-}
-
-func (b *DiscordBot) handleSlashInfo(s *discordgo.Session, i *discordgo.InteractionCreate) {
-	var m runtime.MemStats
-	runtime.ReadMemStats(&m)
-
-	dbFile, err := os.Stat("bot.db")
-	dbSize := "Unknown"
-	if err == nil {
-		dbSize = fmt.Sprintf("%.2f MB", float64(dbFile.Size())/1024/1024)
-	}
-
-	embed := &discordgo.MessageEmbed{
-		Title: "🤖 Bot Information",
-		Color: 0x9b59b6,
-		Fields: []*discordgo.MessageEmbedField{
-			{Name: "Memory Usage", Value: fmt.Sprintf("%.2f MB", float64(m.Alloc)/1024/1024), Inline: true},
-			{Name: "System Memory", Value: fmt.Sprintf("%.2f MB", float64(m.Sys)/1024/1024), Inline: true},
-			{Name: "Database Size", Value: dbSize, Inline: true},
-			{Name: "Goroutines", Value: strconv.Itoa(runtime.NumGoroutine()), Inline: true},
-			{Name: "Go Version", Value: runtime.Version(), Inline: true},
-		},
-		Timestamp: time.Now().Format(time.RFC3339),
 	}
 
 	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
