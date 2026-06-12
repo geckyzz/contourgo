@@ -546,44 +546,23 @@ func (b *DiscordBot) handleSlashTest(s *discordgo.Session, i *discordgo.Interact
 		var err error
 		var totalPages int
 
-		if service == "nyaa" {
-			client := scraper.NewNyaaScraper(proxyURL)
-			for p := 1; ; p++ {
-				log.Printf("Fetching page %d for service nyaa (query: %s, user: %s)", p, keyword, username)
-				torrents, pages, fetchErr := client.FetchTorrents(username, keyword, p, "id", "desc")
-				if fetchErr != nil {
-					b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ Error querying API on page %d: %v", p, fetchErr))
-					return
-				}
-				allTorrents = append(allTorrents, torrents...)
-				totalPages = pages
-				if pageMax > 0 && p >= pageMax {
-					break
-				}
-				if p >= totalPages {
-					break
-				}
-				time.Sleep(500 * time.Millisecond)
+		client := scraper.NewNyaaScraper(proxyURL, service)
+		for p := 1; ; p++ {
+			log.Printf("Fetching page %d for service %s (query: %s, user: %s)", p, service, keyword, username)
+			torrents, pages, fetchErr := client.FetchTorrents(username, keyword, p, "id", "desc")
+			if fetchErr != nil {
+				b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ Error querying API on page %d: %v", p, fetchErr))
+				return
 			}
-		} else {
-			client := scraper.NewSukebeiScraper(proxyURL)
-			for p := 1; ; p++ {
-				log.Printf("Fetching page %d for service sukebei (query: %s, user: %s)", p, keyword, username)
-				torrents, pages, fetchErr := client.FetchTorrents(username, keyword, p, "id", "desc")
-				if fetchErr != nil {
-					b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ Error querying API on page %d: %v", p, fetchErr))
-					return
-				}
-				allTorrents = append(allTorrents, torrents...)
-				totalPages = pages
-				if pageMax > 0 && p >= pageMax {
-					break
-				}
-				if p >= totalPages {
-					break
-				}
-				time.Sleep(500 * time.Millisecond)
+			allTorrents = append(allTorrents, torrents...)
+			totalPages = pages
+			if pageMax > 0 && p >= pageMax {
+				break
 			}
+			if p >= totalPages {
+				break
+			}
+			time.Sleep(500 * time.Millisecond)
 		}
 
 		if len(allTorrents) == 0 {
@@ -621,13 +600,8 @@ func (b *DiscordBot) handleSlashTest(s *discordgo.Session, i *discordgo.Interact
 			b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("💬 Fetching comments for torrent: **%s** (ID: %s)...", targetTorrent.Name, torrentIDStr))
 
 			var comments []scraper.NyaaComment
-			if service == "nyaa" {
-				client := scraper.NewNyaaScraper(proxyURL)
-				comments, err = client.FetchComments(torrentIDStr)
-			} else {
-				client := scraper.NewSukebeiScraper(proxyURL)
-				comments, err = client.FetchComments(torrentIDStr)
-			}
+			client := scraper.NewNyaaScraper(proxyURL, service)
+			comments, err = client.FetchComments(torrentIDStr)
 			if err != nil {
 				b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ Error fetching comments: %v", err))
 				return

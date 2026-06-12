@@ -162,11 +162,7 @@ func (m *Monitor) checkNyaaSukebeiService(service string) {
 		FetchComments(torrentID string) ([]scraper.NyaaComment, error)
 	}
 
-	if service == "nyaa" {
-		client = scraper.NewNyaaScraper(proxyURL)
-	} else {
-		client = scraper.NewSukebeiScraper(proxyURL)
-	}
+	client = scraper.NewNyaaScraper(proxyURL, service)
 
 	monitorMap := m.config.Monitors[service]
 	for key, monitorCfg := range monitorMap {
