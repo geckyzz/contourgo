@@ -615,7 +615,7 @@ func (b *DiscordBot) handleSlashTest(s *discordgo.Session, i *discordgo.Interact
 			}
 
 			firstComment := comments[0]
-			err := b.AnnounceNyaaComment(i.ChannelID, service, torrentIDStr, targetTorrent.Name, firstComment, "")
+			err := b.AnnounceNyaaComment(i.ChannelID, service, torrentIDStr, targetTorrent.Name, firstComment, "", false)
 			if err != nil {
 				b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ Error creating test embed: %v", err))
 			} else {
@@ -699,7 +699,7 @@ func (b *DiscordBot) handleSlashTest(s *discordgo.Session, i *discordgo.Interact
 
 		if inspect == "comments" {
 			firstComment := matchingComments[0]
-			err := b.AnnounceATComment(i.ChannelID, service, firstComment.TorrentID, firstComment.Title, firstComment, "")
+			err := b.AnnounceATComment(i.ChannelID, service, firstComment.TorrentID, firstComment.Title, firstComment, "", false)
 			if err != nil {
 				b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ Error creating test embed: %v", err))
 			} else {
@@ -807,7 +807,7 @@ func (b *DiscordBot) handleSlashTest(s *discordgo.Session, i *discordgo.Interact
 			}
 
 			firstComment := comments[0]
-			err = b.AnnounceAnirenaComment(i.ChannelID, targetTorrent.ID, targetTorrent.FullTitle(), firstComment, "", targetTorrent.Uploader)
+			err = b.AnnounceAnirenaComment(i.ChannelID, targetTorrent.ID, targetTorrent.FullTitle(), firstComment, "", targetTorrent.Uploader, false)
 			if err != nil {
 				b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ Error creating test embed: %v", err))
 			} else {
@@ -888,7 +888,7 @@ func (b *DiscordBot) handleSlashTest(s *discordgo.Session, i *discordgo.Interact
 		if inspect == "comments" || inspect == "result" {
 			// Show the most recent comment in an embed (using the announcer logic)
 			lastComment := comments[0]
-			err := b.AnnounceNekoBTComment(i.ChannelID, firstTorrent.Title, lastComment, "")
+			err := b.AnnounceNekoBTComment(i.ChannelID, firstTorrent.Title, lastComment, "", false)
 			if err != nil {
 				b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ Error creating test embed: %v", err))
 			} else {
@@ -936,7 +936,7 @@ func (b *DiscordBot) handleSlashTest(s *discordgo.Session, i *discordgo.Interact
 			}
 
 			firstComment := comments[0]
-			err = b.AnnounceTsukihimeComment(i.ChannelID, firstTorrent.Name, firstComment, firstComment.ParentText, "")
+			err = b.AnnounceTsukihimeComment(i.ChannelID, firstTorrent.Name, firstComment, firstComment.ParentText, "", false)
 			if err != nil {
 				b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ Error creating test embed: %v", err))
 			} else {
