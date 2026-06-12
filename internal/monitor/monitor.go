@@ -123,9 +123,11 @@ func (m *Monitor) CheckAll(force bool) {
 	m.lastCheckTime = time.Now()
 
 	var wg sync.WaitGroup
+	anyChecked := false
 
 	// 1. Nyaa
 	if m.hasActiveMonitorsDue("nyaa", force) {
+		anyChecked = true
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -135,6 +137,7 @@ func (m *Monitor) CheckAll(force bool) {
 
 	// 2. Sukebei
 	if m.hasActiveMonitorsDue("sukebei", force) {
+		anyChecked = true
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -144,6 +147,7 @@ func (m *Monitor) CheckAll(force bool) {
 
 	// 3. AnimeTosho Old
 	if m.hasActiveMonitorsDue("animetosho_old", force) {
+		anyChecked = true
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -153,6 +157,7 @@ func (m *Monitor) CheckAll(force bool) {
 
 	// 4. AnimeTosho New
 	if m.hasActiveMonitorsDue("animetosho_new", force) {
+		anyChecked = true
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -162,6 +167,7 @@ func (m *Monitor) CheckAll(force bool) {
 
 	// 5. NekoBT
 	if m.hasActiveMonitorsDue("nekobt", force) {
+		anyChecked = true
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -171,6 +177,7 @@ func (m *Monitor) CheckAll(force bool) {
 
 	// 6. AniRena
 	if m.hasActiveMonitorsDue("anirena", force) {
+		anyChecked = true
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -180,6 +187,7 @@ func (m *Monitor) CheckAll(force bool) {
 
 	// 7. Tsukihime
 	if m.hasActiveMonitorsDue("tsukihime", force) {
+		anyChecked = true
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -188,6 +196,10 @@ func (m *Monitor) CheckAll(force bool) {
 	}
 
 	wg.Wait()
+
+	if anyChecked {
+		log.Println("All monitor checks completed.")
+	}
 }
 
 func (m *Monitor) hasActiveMonitors(service string) bool {
@@ -219,13 +231,25 @@ func (m *Monitor) checkNyaaSukebeiService(service string, force bool) {
 	client = scraper.NewNyaaScraper(proxyURL, service)
 
 	monitorMap := m.config.Monitors[service]
+	hasDueMonitors := false
+	for key, monitorCfg := range monitorMap {
+		if m.isDue(service, key, monitorCfg, force) {
+			hasDueMonitors = true
+			break
+		}
+	}
+	if !hasDueMonitors {
+		return
+	}
+
+	log.Printf("[%s] Starting check...", svcName)
+
 	for key, monitorCfg := range monitorMap {
 		if !m.isDue(service, key, monitorCfg, force) {
 			continue
 		}
 		m.updateLastCheck(service, key)
 
-		log.Printf("[%s] Starting check...", svcName)
 		prefix := fmt.Sprintf("[%s][%s]", svcName, key)
 		log.Printf("%s Processing monitor", prefix)
 
@@ -392,6 +416,7 @@ func (m *Monitor) checkAnimeToshoService(service string, force bool) {
 		}
 		hasDueMonitors = true
 		m.updateLastCheck(service, key)
+		log.Printf("[%s][%s] Processing monitor", svcName, key)
 		if key == "feedback" {
 			continue // Handled separately
 		}
@@ -423,10 +448,14 @@ func (m *Monitor) checkAnimeToshoService(service string, force bool) {
 			var err error
 
 			if service == "animetosho_old" {
-				log.Printf("[%s] Fetching page %d", service, page)
+				log.Printf("[%s] Fetching global comments feed (page %d)", svcName, page)
 				comments, hasNext, err = oldScraper.ScrapeComments(page, false)
 			} else {
-				log.Printf("[%s] Fetching page %d for query: %q", service, page, q)
+				if q == "" {
+					log.Printf("[%s] Fetching global comments feed (page %d)", svcName, page)
+				} else {
+					log.Printf("[%s] Fetching comments feed for query %q (page %d)", svcName, q, page)
+				}
 				comments, hasNext, err = newScraper.ScrapeComments(page, q, false)
 			}
 
@@ -454,10 +483,10 @@ func (m *Monitor) checkAnimeToshoService(service string, force bool) {
 			var err error
 
 			if service == "animetosho_old" {
-				log.Printf("[%s][FEEDBACK] Fetching page %d", service, page)
+				log.Printf("[%s][FEEDBACK] Fetching global feedback comments feed (page %d)", svcName, page)
 				comments, hasNext, err = oldScraper.ScrapeComments(page, true)
 			} else {
-				log.Printf("[%s][FEEDBACK] Fetching page %d", service, page)
+				log.Printf("[%s][FEEDBACK] Fetching global feedback comments feed (page %d)", svcName, page)
 				comments, hasNext, err = newScraper.ScrapeComments(page, "", true)
 			}
 
@@ -727,6 +756,28 @@ func (m *Monitor) checkNekoBTSearch(scr *scraper.NekoBTScraper, params url.Value
 
 	for page := 0; page < maxPages; page++ {
 		params.Set("offset", strconv.Itoa(page*50))
+		qVal := params.Get("query")
+		gidVal := params.Get("group_id")
+		uidVal := params.Get("uploader_id")
+		midVal := params.Get("media_id")
+		tmdbVal := params.Get("tmdbid")
+		tvdbVal := params.Get("tvdbid")
+		var targetType, targetVal string
+		if qVal != "" {
+			targetType, targetVal = "query", qVal
+		} else if gidVal != "" {
+			targetType, targetVal = "group", gidVal
+		} else if uidVal != "" {
+			targetType, targetVal = "uploader", uidVal
+		} else if midVal != "" {
+			targetType, targetVal = "media", midVal
+		} else if tmdbVal != "" {
+			targetType, targetVal = "tmdb", tmdbVal
+		} else if tvdbVal != "" {
+			targetType, targetVal = "tvdb", tvdbVal
+		}
+		log.Printf("%s Fetching page %d (offset: %d, %s: %q, sort: %s)", prefix, page+1, page*50, targetType, targetVal, sort)
+
 		torrents, err := scr.SearchTorrents(params)
 		if err != nil {
 			log.Printf("%s Search error: %v", prefix, err)
@@ -888,12 +939,14 @@ func (m *Monitor) checkTsukihime(force bool) {
 			continue
 		}
 		prefix := fmt.Sprintf("[TSUKIHIME][%s]", key)
+		log.Printf("%s Processing monitor", prefix)
 
 		// 1.1 Keywords -> SearchTorrents
 		for _, kw := range monitorCfg.Keywords {
 			if kw == "" {
 				continue
 			}
+			log.Printf("%s Searching torrents for keyword: %q (page 1, limit 100)", prefix, kw)
 			results, err := scr.SearchTorrents(kw)
 			if err != nil {
 				log.Printf("%s Search error for keyword %q: %v", prefix, kw, err)
@@ -910,6 +963,7 @@ func (m *Monitor) checkTsukihime(force bool) {
 			if g == "" {
 				continue
 			}
+			log.Printf("%s Fetching torrents for group: %q (page 1, limit 100)", prefix, g)
 			results, err := scr.FetchTorrentsByGroup(g)
 			if err != nil {
 				log.Printf("%s Error fetching by group %q: %v", prefix, g, err)
@@ -936,6 +990,7 @@ func (m *Monitor) checkTsukihime(force bool) {
 
 			internalID := id
 			if service != "tsukihime" {
+				log.Printf("%s Resolving anime ID for %q via %s", prefix, med, service)
 				var err error
 				internalID, err = scr.ResolveAnimeID(service, id)
 				if err != nil {
@@ -949,6 +1004,7 @@ func (m *Monitor) checkTsukihime(force bool) {
 				time.Sleep(300 * time.Millisecond)
 			}
 
+			log.Printf("%s Fetching torrents for anime %q (internal ID: %s) (page 1, limit 100)", prefix, med, internalID)
 			results, err := scr.FetchTorrentsByAnime(internalID)
 			if err != nil {
 				log.Printf("%s Error fetching by anime %q (internal: %s): %v", prefix, med, internalID, err)
@@ -974,6 +1030,7 @@ func (m *Monitor) checkTsukihime(force bool) {
 
 	var allComments []scraper.TsukihimeComment
 	for page := 0; page < maxPages; page++ {
+		log.Printf("[TSUKIHIME] Fetching global comments feed (page %d)", page+1)
 		resp, err := scr.FetchLatestComments(100, page*100)
 		if err != nil {
 			log.Printf("[TSUKIHIME] Error fetching latest comments (page %d): %v", page, err)
