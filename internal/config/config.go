@@ -104,11 +104,21 @@ type PageConfig struct {
 }
 
 type MonitorDiscordConfig struct {
-	Embed MonitorEmbedConfig `toml:"embed"`
+	Embed  MonitorEmbedConfig  `toml:"embed"`
+	Fields MonitorFieldsConfig `toml:"fields"`
+}
+
+type MonitorFieldsConfig struct {
+	CommentID bool `toml:"comment_id"`
 }
 
 type MonitorEmbedConfig struct {
-	Thumbnail string `toml:"thumbnail"`
+	Author    MonitorAuthorConfig `toml:"author"`
+	Thumbnail string              `toml:"thumbnail"` // Deprecated: use Author.URL
+}
+
+type MonitorAuthorConfig struct {
+	URL string `toml:"url"`
 }
 
 func LoadConfig(path string) (*Config, error) {
@@ -120,6 +130,17 @@ func LoadConfig(path string) (*Config, error) {
 	var cfg Config
 	// Try parsing everything normally first
 	err = toml.Unmarshal(data, &cfg)
+
+	// Migrate Thumbnail to Author.URL if needed
+	for svc := range cfg.Monitors {
+		for key := range cfg.Monitors[svc] {
+			m := cfg.Monitors[svc][key]
+			if m.Discord.Embed.Author.URL == "" && m.Discord.Embed.Thumbnail != "" {
+				m.Discord.Embed.Author.URL = m.Discord.Embed.Thumbnail
+				cfg.Monitors[svc][key] = m
+			}
+		}
+	}
 
 	// Fallback to raw map for robust recovery if monitors are empty or error occurred
 	if err != nil || len(cfg.Monitors) == 0 {

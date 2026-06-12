@@ -20,24 +20,25 @@ uploaders = ["username1", "username2"]
 sort = "comments" # comments, size, id, seeders, leechers, downloads
 order = "desc"    # desc, asc
 page.max = 0
-discord.embed.thumbnail = "https://i.imgur.com/some-nyaa-image.png"
+discord.embed.author.url = "https://i.imgur.com/some-nyaa-image.png"
+discord.fields.comment_id = false
 
 [monitor.sukebei.lewd]
 uploaders = ["uploader_name"]
 sort = "id"
 order = "desc"
 page.max = 0
-discord.embed.thumbnail = "https://i.imgur.com/some-sukebei-image.png"
+discord.embed.author.url = "https://i.imgur.com/some-sukebei-image.png"
 
 [monitor.animetosho_new.all]
 keywords = ["Gecko"]
 page.max = 5
-discord.embed.thumbnail = "https://i.imgur.com/some-at-new-image.png"
+discord.embed.author.url = "https://i.imgur.com/some-at-new-image.png"
 
 [monitor.animetosho_old.all]
 keywords = ["Gecko", "geckyzz", "CicakRumah", "TokekHutan"]
 page.max = 5
-discord.embed.thumbnail = "https://i.imgur.com/some-at-image.png"
+discord.embed.author.url = "https://i.imgur.com/some-at-image.png"
 
 [monitor.nekobt.my_group]
 groups = ["12345"] # Monitor specific group ID
@@ -45,7 +46,7 @@ uploaders = ["67890"] # Monitor specific uploader ID
 media = ["s123", "tmdb:456", "tvdb:789"] # Monitor specific media ID, tmdb ID, or tvdb ID
 keywords = ["some search term"] # Optional keyword search fallback
 sort = "comments" # best, latest, oldest, rss, seeders, downloads, comments, etc.
-discord.embed.thumbnail = "https://i.imgur.com/some-nekobt-image.png"
+discord.embed.author.url = "https://i.imgur.com/some-nekobt-image.png"
 
 [monitor.anirena.normies]
 keywords = ["fansubs", "raws"] # list of keywords to search on AniRena
@@ -53,7 +54,7 @@ uploaders = ["username1"] # AniRena username
 sort = "comments" # comments, size, id, seeders, leechers, downloads
 order = "desc"    # desc, asc
 page.max = 0
-discord.embed.thumbnail = "https://i.imgur.com/some-anirena-image.png"
+discord.embed.author.url = "https://i.imgur.com/some-anirena-image.png"
 
 [monitor.tsukihime.my_group]
 groups = ["16", "Gecko"] # Monitor specific group ID or group name
@@ -61,9 +62,9 @@ uploaders = ["19", "TokekHutan"] # Monitor specific commenter/uploader user ID o
 media = ["79", "mal:59970"] # Monitor specific series by TsukiHime ID, mal:ID, anilist:ID, anidb:ID
 keywords = ["Snowball Earth"]
 page.max = 1
-discord.embed.thumbnail = "https://i.imgur.com/some-tsukihime-image.png"
+discord.embed.author.url = "https://i.imgur.com/some-tsukihime-image.png"
 
 [monitor.tsukihime.feedback]
 keywords = ["magnet", "DDL"] # list of keywords to monitor general feedback comments
 page.max = 1
-discord.embed.thumbnail = "https://i.imgur.com/some-feedback-image.png"
+discord.embed.author.url = "https://i.imgur.com/some-feedback-image.png"
