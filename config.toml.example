@@ -6,6 +6,11 @@ members.admins.allow = true # give all admins (other than the bot owner) access 
 members.moderators.allow = false # give all members with manage message perm to access the bot
 members.others.allow = [] # list of user snowflakes to have access
 
+# Global Discord Embed defaults (overridable per monitor)
+# embed.author.url = "https://i.imgur.com/some-global-author-image.png"
+# fields.comment_id = false
+# display.user_content_image = false
+
 [config]
 monitor.by = "PT30M" # how long before next check to be attempted in ISO 8601 (or "30m")
 nyaa.proxy.url = "" # Your nyaa-api-worker base url

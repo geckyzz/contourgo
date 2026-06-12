@@ -314,7 +314,7 @@ func (m *Monitor) checkNyaaSukebeiService(service string, force bool) {
 							if !m.db.IsCommentStored(service, torrentIDStr, commentIDStr) {
 								if !m.DumpComments {
 									log.Printf("%s Announcing comment %d by %s on torrent %s", prefix, c.ID, c.Username, torrentIDStr)
-									err := m.bot.AnnounceNyaaComment("", service, torrentIDStr, t.Name, c, monitorCfg.Discord.Embed.Author.URL, monitorCfg.Discord.Fields.CommentID, monitorCfg.Discord.Display.UserContentImage)
+									err := m.bot.AnnounceNyaaComment("", service, torrentIDStr, t.Name, c, m.config.ResolveAuthorURL(monitorCfg), m.config.ResolveCommentID(monitorCfg), m.config.ResolveUserContentImage(monitorCfg))
 									if err != nil {
 										log.Printf("%s Error announcing comment: %v", prefix, err)
 									}
@@ -605,7 +605,7 @@ func (m *Monitor) checkAnirena(force bool) {
 							if !m.db.IsCommentStored("anirena", t.ID, c.ID) {
 								if !m.DumpComments {
 									log.Printf("%s Announcing comment %s by %s on torrent %s", prefix, c.ID, c.Username, t.ID)
-									err := m.bot.AnnounceAnirenaComment("", t.ID, t.FullTitle(), c, monitorCfg.Discord.Embed.Author.URL, t.Uploader, monitorCfg.Discord.Fields.CommentID, monitorCfg.Discord.Display.UserContentImage)
+									err := m.bot.AnnounceAnirenaComment("", t.ID, t.FullTitle(), c, m.config.ResolveAuthorURL(monitorCfg), t.Uploader, m.config.ResolveCommentID(monitorCfg), m.config.ResolveUserContentImage(monitorCfg))
 									if err != nil {
 										log.Printf("%s Error announcing comment: %v", prefix, err)
 									}
@@ -767,7 +767,7 @@ func (m *Monitor) checkNekoBTSearch(scr *scraper.NekoBTScraper, params url.Value
 					if !m.db.IsCommentStored("nekobt", t.ID, c.ID) {
 						if !m.DumpComments {
 							log.Printf("%s Announcing comment %s by %s on torrent %s", prefix, c.ID, c.DisplayName, t.ID)
-							m.bot.AnnounceNekoBTComment("", t.Title, c, monitorCfg.Discord.Embed.Author.URL, monitorCfg.Discord.Fields.CommentID, monitorCfg.Discord.Display.UserContentImage)
+							m.bot.AnnounceNekoBTComment("", t.Title, c, m.config.ResolveAuthorURL(monitorCfg), m.config.ResolveCommentID(monitorCfg), m.config.ResolveUserContentImage(monitorCfg))
 							time.Sleep(500 * time.Millisecond)
 						} else {
 							log.Printf("%s [DUMP] Storing comment %s by %s on torrent %s", prefix, c.ID, c.DisplayName, t.ID)
@@ -839,7 +839,7 @@ func (m *Monitor) processATComments(service string, comments []scraper.ATComment
 			if !m.db.IsCommentStored(service, dbTorrentID, comment.ID) {
 				if !m.DumpComments {
 					log.Printf("[%s] Announcing comment %s by %s on %s", strings.ToUpper(service), comment.ID, comment.Username, comment.TorrentID)
-					err := m.bot.AnnounceATComment("", service, comment.TorrentID, comment.Title, comment, monitorCfg.Discord.Embed.Author.URL, monitorCfg.Discord.Fields.CommentID, monitorCfg.Discord.Display.UserContentImage)
+					err := m.bot.AnnounceATComment("", service, comment.TorrentID, comment.Title, comment, m.config.ResolveAuthorURL(monitorCfg), m.config.ResolveCommentID(monitorCfg), m.config.ResolveUserContentImage(monitorCfg))
 					if err != nil {
 						log.Printf("[%s] Error announcing comment: %v", strings.ToUpper(service), err)
 					}
@@ -1062,7 +1062,7 @@ func (m *Monitor) checkTsukihime(force bool) {
 
 			if !m.DumpComments {
 				log.Printf("[TSUKIHIME][%s] Announcing comment %s by %s on %s", key, commentID, c.GetDisplayName(), torrentID)
-				err := m.bot.AnnounceTsukihimeComment("", details.Name, c, parentText, monitorCfg.Discord.Embed.Author.URL, monitorCfg.Discord.Fields.CommentID, monitorCfg.Discord.Display.UserContentImage)
+				err := m.bot.AnnounceTsukihimeComment("", details.Name, c, parentText, m.config.ResolveAuthorURL(monitorCfg), m.config.ResolveCommentID(monitorCfg), m.config.ResolveUserContentImage(monitorCfg))
 				if err != nil {
 					log.Printf("[TSUKIHIME][%s] Error announcing comment: %v", key, err)
 				}

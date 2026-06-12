@@ -17,10 +17,13 @@ type Config struct {
 }
 
 type DiscordConfig struct {
-	Token    string         `toml:"token"`
-	Server   string         `toml:"server"`
-	Announce AnnounceConfig `toml:"announce"`
-	Members  MembersConfig  `toml:"members"`
+	Token    string               `toml:"token"`
+	Server   string               `toml:"server"`
+	Announce AnnounceConfig       `toml:"announce"`
+	Members  MembersConfig        `toml:"members"`
+	Embed    MonitorEmbedConfig   `toml:"embed"`
+	Fields   MonitorFieldsConfig  `toml:"fields"`
+	Display  MonitorDisplayConfig `toml:"display"`
 }
 
 type AnnounceConfig struct {
@@ -110,20 +113,20 @@ type MonitorDiscordConfig struct {
 }
 
 type MonitorDisplayConfig struct {
-	UserContentImage bool `toml:"user_content_image"`
+	UserContentImage *bool `toml:"user_content_image"`
 }
 
 type MonitorFieldsConfig struct {
-	CommentID bool `toml:"comment_id"`
+	CommentID *bool `toml:"comment_id"`
 }
 
 type MonitorEmbedConfig struct {
 	Author    MonitorAuthorConfig `toml:"author"`
-	Thumbnail string              `toml:"thumbnail"` // Deprecated: use Author.URL
+	Thumbnail *string             `toml:"thumbnail"` // Deprecated: use Author.URL
 }
 
 type MonitorAuthorConfig struct {
-	URL string `toml:"url"`
+	URL *string `toml:"url"`
 }
 
 func LoadConfig(path string) (*Config, error) {
@@ -140,7 +143,7 @@ func LoadConfig(path string) (*Config, error) {
 	for svc := range cfg.Monitors {
 		for key := range cfg.Monitors[svc] {
 			m := cfg.Monitors[svc][key]
-			if m.Discord.Embed.Author.URL == "" && m.Discord.Embed.Thumbnail != "" {
+			if (m.Discord.Embed.Author.URL == nil || *m.Discord.Embed.Author.URL == "") && m.Discord.Embed.Thumbnail != nil && *m.Discord.Embed.Thumbnail != "" {
 				m.Discord.Embed.Author.URL = m.Discord.Embed.Thumbnail
 				cfg.Monitors[svc][key] = m
 			}
@@ -331,4 +334,34 @@ func (cfg *Config) LogConfigSummary() {
 	}
 	log.Printf("Total Monitors Configured: %d", totalMonitors)
 	log.Println("-----------------------------")
+}
+
+func (c *Config) ResolveAuthorURL(monitor MonitorConfig) string {
+	if monitor.Discord.Embed.Author.URL != nil && *monitor.Discord.Embed.Author.URL != "" {
+		return *monitor.Discord.Embed.Author.URL
+	}
+	if c.Discord.Embed.Author.URL != nil && *c.Discord.Embed.Author.URL != "" {
+		return *c.Discord.Embed.Author.URL
+	}
+	return ""
+}
+
+func (c *Config) ResolveCommentID(monitor MonitorConfig) bool {
+	if monitor.Discord.Fields.CommentID != nil {
+		return *monitor.Discord.Fields.CommentID
+	}
+	if c.Discord.Fields.CommentID != nil {
+		return *c.Discord.Fields.CommentID
+	}
+	return false
+}
+
+func (c *Config) ResolveUserContentImage(monitor MonitorConfig) bool {
+	if monitor.Discord.Display.UserContentImage != nil {
+		return *monitor.Discord.Display.UserContentImage
+	}
+	if c.Discord.Display.UserContentImage != nil {
+		return *c.Discord.Display.UserContentImage
+	}
+	return false
 }
