@@ -550,7 +550,7 @@ func (b *DiscordBot) handleSlashTest(s *discordgo.Session, i *discordgo.Interact
 
 		client := scraper.NewNyaaScraper(proxyURL, service)
 		for p := 1; ; p++ {
-			log.Printf("Fetching page %d for service %s (query: %s, user: %s)", p, service, keyword, username)
+			log.Printf("[%s] Fetching page %d (user: %q, q: %q)", strings.ToUpper(service), p, username, keyword)
 			torrents, pages, fetchErr := client.FetchTorrents(username, keyword, p, "id", "desc")
 			if fetchErr != nil {
 				b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ Error querying API on page %d: %v", p, fetchErr))
@@ -645,7 +645,11 @@ func (b *DiscordBot) handleSlashTest(s *discordgo.Session, i *discordgo.Interact
 		if actualService == "animetosho_old" {
 			client := scraper.NewAnimeToshoOldScraper()
 			for p := 1; ; p++ {
-				log.Printf("Fetching page %d for service %s", p, service)
+				if isFeedback {
+					log.Printf("[%s][FEEDBACK] Fetching global feedback comments feed (page %d)", strings.ToUpper(actualService), p)
+				} else {
+					log.Printf("[%s] Fetching global comments feed (page %d)", strings.ToUpper(actualService), p)
+				}
 				comments, hasNext, scrapeErr := client.ScrapeComments(p, isFeedback)
 				if scrapeErr != nil {
 					b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ Error scraping AnimeTosho page %d: %v", p, scrapeErr))
@@ -660,7 +664,15 @@ func (b *DiscordBot) handleSlashTest(s *discordgo.Session, i *discordgo.Interact
 		} else {
 			client := scraper.NewAnimeToshoNewScraper()
 			for p := 1; ; p++ {
-				log.Printf("Fetching page %d for service %s (query: %q)", p, service, query)
+				if isFeedback {
+					log.Printf("[%s][FEEDBACK] Fetching global feedback comments feed (page %d)", strings.ToUpper(actualService), p)
+				} else {
+					if query == "" {
+						log.Printf("[%s] Fetching global comments feed (page %d)", strings.ToUpper(actualService), p)
+					} else {
+						log.Printf("[%s] Fetching comments feed for query %q (page %d)", strings.ToUpper(actualService), query, p)
+					}
+				}
 				comments, hasNext, scrapeErr := client.ScrapeComments(p, query, isFeedback)
 				if scrapeErr != nil {
 					b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ Error scraping AnimeTosho page %d: %v", p, scrapeErr))
@@ -747,7 +759,7 @@ func (b *DiscordBot) handleSlashTest(s *discordgo.Session, i *discordgo.Interact
 		var totalPages int
 
 		for p := 1; ; p++ {
-			log.Printf("Fetching page %d for service anirena (query: %s, user: %s, group: %s)", p, keywordFilter, usernameFilter, groupFilter)
+			log.Printf("[ANIRENA] Fetching page %d (user: %q, group: %q, q: %q)", p, usernameFilter, groupFilter, keywordFilter)
 			torrents, pages, fetchErr := client.FetchTorrents(usernameFilter, groupFilter, keywordFilter, p, "date", "desc")
 			if fetchErr != nil {
 				b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ Error querying AniRena API on page %d: %v", p, fetchErr))
