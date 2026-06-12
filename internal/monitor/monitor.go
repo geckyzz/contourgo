@@ -23,6 +23,8 @@ type Monitor struct {
 	forceCheckChan chan bool
 	lastCheckTime  time.Time
 	DumpComments   bool
+	lastCheckMap   map[string]map[string]time.Time
+	mu             sync.Mutex
 }
 
 func NewMonitor(cfg *config.Config, database *db.DB, bot *discord.DiscordBot, forceCheckChan chan bool) *Monitor {
@@ -31,27 +33,72 @@ func NewMonitor(cfg *config.Config, database *db.DB, bot *discord.DiscordBot, fo
 		db:             database,
 		bot:            bot,
 		forceCheckChan: forceCheckChan,
+		lastCheckMap:   make(map[string]map[string]time.Time),
 	}
 }
 
-func (m *Monitor) Start() {
+func (m *Monitor) isDue(service, key string, monitorCfg config.MonitorConfig, force bool) bool {
+	if force {
+		return true
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	lastCheck, ok := m.lastCheckMap[service][key]
+	if !ok {
+		return true
+	}
+
 	interval := config.ParseISO8601Duration(m.config.Config.Monitor.By)
-	log.Printf("Starting monitoring loop with interval: %v", interval)
+	if monitorCfg.Monitor.By != "" {
+		interval = config.ParseISO8601Duration(monitorCfg.Monitor.By)
+	}
 
+	return time.Since(lastCheck) >= interval
+}
+
+func (m *Monitor) updateLastCheck(service, key string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.lastCheckMap == nil {
+		m.lastCheckMap = make(map[string]map[string]time.Time)
+	}
+	if m.lastCheckMap[service] == nil {
+		m.lastCheckMap[service] = make(map[string]time.Time)
+	}
+	m.lastCheckMap[service][key] = time.Now()
+}
+
+func (m *Monitor) hasActiveMonitorsDue(service string, force bool) bool {
+	inner, ok := m.config.Monitors[service]
+	if !ok || len(inner) == 0 {
+		return false
+	}
+	for key, monitorCfg := range inner {
+		if m.isDue(service, key, monitorCfg, force) {
+			return true
+		}
+	}
+	return false
+}
+
+func (m *Monitor) Start() {
 	log.Println("Performing initial check on startup...")
-	m.CheckAll()
+	m.CheckAll(true)
 
-	ticker := time.NewTicker(interval)
+	// Tick every 10 seconds to process due monitors
+	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
-			log.Println("Scheduled check triggered.")
-			m.CheckAll()
+			m.CheckAll(false)
 		case <-m.forceCheckChan:
 			log.Println("Manual check triggered.")
-			m.CheckAll()
+			m.CheckAll(true)
 		}
 	}
 }
@@ -72,67 +119,66 @@ func (m *Monitor) isExcluded(title string, excludes []string) bool {
 	return false
 }
 
-func (m *Monitor) CheckAll() {
+func (m *Monitor) CheckAll(force bool) {
 	m.lastCheckTime = time.Now()
 
 	var wg sync.WaitGroup
 
 	// 1. Nyaa
-	if m.hasActiveMonitors("nyaa") {
+	if m.hasActiveMonitorsDue("nyaa", force) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			m.checkNyaa()
+			m.checkNyaa(force)
 		}()
 	}
 
 	// 2. Sukebei
-	if m.hasActiveMonitors("sukebei") {
+	if m.hasActiveMonitorsDue("sukebei", force) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			m.checkSukebei()
+			m.checkSukebei(force)
 		}()
 	}
 
 	// 3. AnimeTosho Old
-	if m.hasActiveMonitors("animetosho_old") {
+	if m.hasActiveMonitorsDue("animetosho_old", force) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			m.checkAnimeToshoOld()
+			m.checkAnimeToshoOld(force)
 		}()
 	}
 
 	// 4. AnimeTosho New
-	if m.hasActiveMonitors("animetosho_new") {
+	if m.hasActiveMonitorsDue("animetosho_new", force) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			m.checkAnimeToshoNew()
+			m.checkAnimeToshoNew(force)
 		}()
 	}
 
 	// 5. NekoBT
-	if m.hasActiveMonitors("nekobt") {
+	if m.hasActiveMonitorsDue("nekobt", force) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			m.checkNekoBT()
+			m.checkNekoBT(force)
 		}()
 	}
 
 	// 6. AniRena
-	if m.hasActiveMonitors("anirena") {
+	if m.hasActiveMonitorsDue("anirena", force) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			m.checkAnirena()
+			m.checkAnirena(force)
 		}()
 	}
 
 	wg.Wait()
-	log.Println("Finished check of all monitors.")
 }
 
 func (m *Monitor) hasActiveMonitors(service string) bool {
@@ -140,17 +186,16 @@ func (m *Monitor) hasActiveMonitors(service string) bool {
 	return ok && len(inner) > 0
 }
 
-func (m *Monitor) checkNyaa() {
-	m.checkNyaaSukebeiService("nyaa")
+func (m *Monitor) checkNyaa(force bool) {
+	m.checkNyaaSukebeiService("nyaa", force)
 }
 
-func (m *Monitor) checkSukebei() {
-	m.checkNyaaSukebeiService("sukebei")
+func (m *Monitor) checkSukebei(force bool) {
+	m.checkNyaaSukebeiService("sukebei", force)
 }
 
-func (m *Monitor) checkNyaaSukebeiService(service string) {
+func (m *Monitor) checkNyaaSukebeiService(service string, force bool) {
 	svcName := strings.ToUpper(service)
-	log.Printf("[%s] Starting check...", svcName)
 	proxyURL := m.config.Config.Nyaa.Proxy.URL
 	if proxyURL == "" {
 		log.Printf("[%s] Warning: nyaa.proxy.url is empty, skipping.", svcName)
@@ -166,6 +211,12 @@ func (m *Monitor) checkNyaaSukebeiService(service string) {
 
 	monitorMap := m.config.Monitors[service]
 	for key, monitorCfg := range monitorMap {
+		if !m.isDue(service, key, monitorCfg, force) {
+			continue
+		}
+		m.updateLastCheck(service, key)
+
+		log.Printf("[%s] Starting check...", svcName)
 		prefix := fmt.Sprintf("[%s][%s]", svcName, key)
 		log.Printf("%s Processing monitor", prefix)
 
@@ -291,22 +342,21 @@ func (m *Monitor) checkNyaaSukebeiService(service string) {
 	}
 }
 
-func (m *Monitor) checkAnimeToshoOld() {
-	m.checkAnimeToshoService("animetosho_old")
+func (m *Monitor) checkAnimeToshoOld(force bool) {
+	m.checkAnimeToshoService("animetosho_old", force)
 }
 
-func (m *Monitor) checkAnimeToshoNew() {
-	m.checkAnimeToshoService("animetosho_new")
+func (m *Monitor) checkAnimeToshoNew(force bool) {
+	m.checkAnimeToshoService("animetosho_new", force)
 }
 
-func (m *Monitor) checkAnimeToshoService(service string) {
+func (m *Monitor) checkAnimeToshoService(service string, force bool) {
 	monitorMap, exists := m.config.Monitors[service]
 	if !exists || len(monitorMap) == 0 {
 		return
 	}
 
 	svcName := strings.ToUpper(service)
-	log.Printf("[%s] Starting check...", svcName)
 
 	var oldScraper *scraper.AnimeToshoOldScraper
 	var newScraper *scraper.AnimeToshoNewScraper
@@ -326,13 +376,19 @@ func (m *Monitor) checkAnimeToshoService(service string) {
 
 	// Collect unique queries to perform (only relevant for New, but safe to collect for both)
 	queries := make(map[string]bool)
-	if service == "animetosho_old" {
-		queries[""] = true // Global list
-	} else {
-		for key, monitorCfg := range monitorMap {
-			if key == "feedback" {
-				continue // Handled separately
-			}
+	hasDueMonitors := false
+	for key, monitorCfg := range monitorMap {
+		if !m.isDue(service, key, monitorCfg, force) {
+			continue
+		}
+		hasDueMonitors = true
+		m.updateLastCheck(service, key)
+		if key == "feedback" {
+			continue // Handled separately
+		}
+		if service == "animetosho_old" {
+			queries[""] = true // Global list
+		} else {
 			if len(monitorCfg.Keywords) == 0 {
 				queries[""] = true
 			} else {
@@ -342,6 +398,12 @@ func (m *Monitor) checkAnimeToshoService(service string) {
 			}
 		}
 	}
+
+	if !hasDueMonitors {
+		return
+	}
+
+	log.Printf("[%s] Starting check...", svcName)
 
 	// Perform scraping for each unique query
 	for q := range queries {
@@ -374,7 +436,8 @@ func (m *Monitor) checkAnimeToshoService(service string) {
 	}
 
 	// If a feedback monitor exists, run a separate feedback scrape cycle
-	if _, hasFeedback := monitorMap["feedback"]; hasFeedback {
+	if feedbackCfg, hasFeedback := monitorMap["feedback"]; hasFeedback && m.isDue(service, "feedback", feedbackCfg, force) {
+		m.updateLastCheck(service, "feedback")
 		page := 1
 		for {
 			var comments []scraper.ATComment
@@ -404,9 +467,20 @@ func (m *Monitor) checkAnimeToshoService(service string) {
 	}
 }
 
-func (m *Monitor) checkAnirena() {
+func (m *Monitor) checkAnirena(force bool) {
 	monitorMap, exists := m.config.Monitors["anirena"]
 	if !exists || len(monitorMap) == 0 {
+		return
+	}
+
+	hasDueMonitors := false
+	for key, monitorCfg := range monitorMap {
+		if m.isDue("anirena", key, monitorCfg, force) {
+			hasDueMonitors = true
+			break
+		}
+	}
+	if !hasDueMonitors {
 		return
 	}
 
@@ -421,6 +495,11 @@ func (m *Monitor) checkAnirena() {
 	client := scraper.NewAnirenaScraper(apiKey)
 
 	for key, monitorCfg := range monitorMap {
+		if !m.isDue("anirena", key, monitorCfg, force) {
+			continue
+		}
+		m.updateLastCheck("anirena", key)
+
 		prefix := fmt.Sprintf("[ANIRENA][%s]", key)
 		log.Printf("%s Processing monitor", prefix)
 
@@ -554,9 +633,20 @@ func (m *Monitor) checkAnirena() {
 	}
 }
 
-func (m *Monitor) checkNekoBT() {
+func (m *Monitor) checkNekoBT(force bool) {
 	monitorMap, exists := m.config.Monitors["nekobt"]
 	if !exists || len(monitorMap) == 0 {
+		return
+	}
+
+	hasDueMonitors := false
+	for key, monitorCfg := range monitorMap {
+		if m.isDue("nekobt", key, monitorCfg, force) {
+			hasDueMonitors = true
+			break
+		}
+	}
+	if !hasDueMonitors {
 		return
 	}
 
@@ -565,6 +655,11 @@ func (m *Monitor) checkNekoBT() {
 	scr := scraper.NewNekoBTScraper(apiKey)
 
 	for key, monitorCfg := range monitorMap {
+		if !m.isDue("nekobt", key, monitorCfg, force) {
+			continue
+		}
+		m.updateLastCheck("nekobt", key)
+
 		prefix := fmt.Sprintf("[NEKOBT][%s]", key)
 		log.Printf("%s Processing monitor", prefix)
 

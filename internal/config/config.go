@@ -96,6 +96,7 @@ type MonitorConfig struct {
 	Order     string               `toml:"order"`     // Optional: asc/desc
 	Page      PageConfig           `toml:"page"`
 	Discord   MonitorDiscordConfig `toml:"discord"`
+	Monitor   MonitorTimeConfig    `toml:"monitor"`
 }
 
 type PageConfig struct {
