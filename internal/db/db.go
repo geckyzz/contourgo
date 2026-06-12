@@ -2,11 +2,16 @@ package db
 
 import (
 	"database/sql"
+	"embed"
 	"sync"
 	"time"
 
+	"github.com/pressly/goose/v3"
 	_ "modernc.org/sqlite"
 )
+
+//go:embed migrations/*.sql
+var embedMigrations embed.FS
 
 type DB struct {
 	Conn *sql.DB
@@ -19,38 +24,13 @@ func InitDB(dbPath string) (*DB, error) {
 		return nil, err
 	}
 
-	// 1. Torrents table
-	_, err = conn.Exec(`
-		CREATE TABLE IF NOT EXISTS torrents (
-			service TEXT,
-			torrent_id TEXT,
-			title TEXT,
-			comment_count INTEGER,
-			last_scraped_at DATETIME,
-			PRIMARY KEY (service, torrent_id)
-		)
-	`)
-	if err != nil {
+	if err := goose.SetDialect("sqlite3"); err != nil {
 		conn.Close()
 		return nil, err
 	}
 
-	// 2. Comments table
-	_, err = conn.Exec(`
-		CREATE TABLE IF NOT EXISTS comments (
-			service TEXT,
-			torrent_id TEXT,
-			comment_id TEXT,
-			username TEXT,
-			message TEXT,
-			timestamp INTEGER,
-			position INTEGER,
-			user_role TEXT,
-			avatar_url TEXT,
-			PRIMARY KEY (service, torrent_id, comment_id)
-		)
-	`)
-	if err != nil {
+	goose.SetBaseFS(embedMigrations)
+	if err := goose.Up(conn, "migrations"); err != nil {
 		conn.Close()
 		return nil, err
 	}
