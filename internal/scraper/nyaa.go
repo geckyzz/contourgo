@@ -25,9 +25,9 @@ func NewNyaaScraper(proxyURL string) *NyaaScraper {
 func (s *NyaaScraper) FetchTorrents(username string, keyword string, page int, sort string, order string) ([]NyaaTorrent, int, error) {
 	var endpoint string
 	if username != "" {
-		endpoint = fmt.Sprintf("%s/nyaa/v1/user/%s/uploads?p=%d&s=%s&o=%s", s.proxyURL, url.PathEscape(username), page, url.QueryEscape(sort), url.QueryEscape(order))
+		endpoint = fmt.Sprintf("%s/nyaa/v1/user/%s/uploads?p=%d&s=%s&o=%s&less=true", s.proxyURL, url.PathEscape(username), page, url.QueryEscape(sort), url.QueryEscape(order))
 	} else {
-		endpoint = fmt.Sprintf("%s/nyaa/v1/?q=%s&p=%d&s=%s&o=%s", s.proxyURL, url.QueryEscape(keyword), page, url.QueryEscape(sort), url.QueryEscape(order))
+		endpoint = fmt.Sprintf("%s/nyaa/v1/?q=%s&p=%d&s=%s&o=%s&less=true", s.proxyURL, url.QueryEscape(keyword), page, url.QueryEscape(sort), url.QueryEscape(order))
 	}
 
 	resp, err := s.client.Get(endpoint)
