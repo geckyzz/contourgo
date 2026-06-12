@@ -7,7 +7,7 @@ A high-performance, concurrent Discord bot written in Go for monitoring comment 
 
 ## 🚀 Features
 
-- **Multi-Site Monitoring**: Support for **Nyaa.si**, **Sukebei.nyaa.si**, **AnimeTosho** (`.old` and `.new`), and **NekoBT**.
+- **Multi-Site Monitoring**: Support for **Nyaa.si**, **Sukebei.nyaa.si**, **AnimeTosho** (`.old` and `.new`), **NekoBT**, and **AniRena**.
 - **Parallel Architecture**: Utilizes Go routines to check all active services simultaneously, maximizing throughput and minimizing check cycle duration.
 - **Smart Filtering**:
   - **Keywords**: Monitor specific search terms.
@@ -75,6 +75,7 @@ For initial database seeding without spamming Discord:
 | `config.monitor.by`        | Check interval (e.g., `PT10M` or `10m`)          | `PT30M`             |
 | `config.nyaa.proxy.url`    | URL to your Nyaa API Proxy                       | (Required for Nyaa) |
 | `config.nekobt.api.key`    | Your NekoBT SSID API key                         | (Optional)          |
+| `config.anirena.api.key`   | Your AniRena API key                             | (Optional)          |
 
 ### Monitor Blocks (`[monitor.<service>.<key>]`)
 
@@ -84,19 +85,20 @@ You can define multiple monitors per service.
 | :---------- | :------------------------------------------------- | :-------------------- |
 | `keywords`  | List of search strings                             | All                   |
 | `excludes`  | List of glob patterns to skip                      | All                   |
-| `uploaders` | List of uploader usernames or IDs                  | Nyaa, Sukebei, NekoBT |
-| `groups`    | List of NekoBT Group IDs                           | NekoBT                |
+| `uploaders` | List of uploader usernames or IDs                  | Nyaa, Sukebei, NekoBT, AniRena |
+| `groups`    | List of Group IDs or Group Slugs                   | NekoBT, AniRena       |
 | `media`     | List of Media IDs (`s123`, `tmdb:123`, `tvdb:456`) | NekoBT                |
-| `sort`      | Sorting method (see below)                         | Nyaa, Sukebei, NekoBT |
-| `order`     | `asc` or `desc`                                    | Nyaa, Sukebei         |
+| `sort`      | Sorting method (see below)                         | Nyaa, Sukebei, NekoBT, AniRena |
+| `order`     | `asc` or `desc`                                    | Nyaa, Sukebei, AniRena |
 | `page.max`  | Max pages to scan per check                        | All                   |
 
-**Supported Services**: `nyaa`, `sukebei`, `animetosho_old`, `animetosho_new`, `nekobt`.
+**Supported Services**: `nyaa`, `sukebei`, `animetosho_old`, `animetosho_new`, `nekobt`, `anirena`.
 
 #### Sorting Options:
 
 - **Nyaa/Sukebei**: **`id`** (date), `comments`, `size`, `seeders`, `leechers`, `downloads`.
 - **NekoBT**: `best`, **`latest`**, `oldest`, `rss`, `seeders`, `seeders_asc`, `leechers`, `leechers_asc`, `downloads`, `downloads_asc`, `comments`, `comments_asc`, `filesize`, `filesize_asc`.
+- **AniRena**: `sort`: **`date`** (default), `size`, `seeders`, `leechers`, `completed`, `title`.
 
 ---
 

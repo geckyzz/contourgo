@@ -46,3 +46,11 @@ media = ["s123", "tmdb:456", "tvdb:789"] # Monitor specific media ID, tmdb ID, o
 keywords = ["some search term"] # Optional keyword search fallback
 sort = "comments" # best, latest, oldest, rss, seeders, downloads, comments, etc.
 discord.embed.thumbnail = "https://i.imgur.com/some-nekobt-image.png"
+
+[monitor.anirena.normies]
+keywords = ["fansubs", "raws"] # list of keywords to search on AniRena
+uploaders = ["username1"] # AniRena username
+sort = "comments" # comments, size, id, seeders, leechers, downloads
+order = "desc"    # desc, asc
+page.max = 0
+discord.embed.thumbnail = "https://i.imgur.com/some-anirena-image.png"

@@ -79,9 +79,7 @@ type NekobtAPIConfig struct {
 }
 
 type AnirenaConfig struct {
-	API      AnirenaAPIConfig `toml:"api"`
-	Username string           `toml:"username"`
-	Password string           `toml:"password"`
+	API AnirenaAPIConfig `toml:"api"`
 }
 
 type AnirenaAPIConfig struct {
@@ -295,6 +293,12 @@ func (cfg *Config) LogConfigSummary() {
 	log.Printf("Nyaa Proxy URL: %q", cfg.Config.Nyaa.Proxy.URL)
 	log.Printf("NekoBT API Key: %s", func() string {
 		if cfg.Config.Nekobt.API.Key != "" {
+			return "PRESENT"
+		}
+		return "MISSING"
+	}())
+	log.Printf("AniRena API Key: %s", func() string {
+		if cfg.Config.Anirena.API.Key != "" {
 			return "PRESENT"
 		}
 		return "MISSING"

@@ -122,6 +122,15 @@ func (m *Monitor) CheckAll() {
 		}()
 	}
 
+	// 6. AniRena
+	if m.hasActiveMonitors("anirena") {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			m.checkAnirena()
+		}()
+	}
+
 	wg.Wait()
 	log.Println("Finished check of all monitors.")
 }
@@ -249,7 +258,7 @@ func (m *Monitor) checkNyaaSukebeiService(service string) {
 							if !m.db.IsCommentStored(service, torrentIDStr, commentIDStr) {
 								if !m.DumpComments {
 									log.Printf("%s Announcing comment %d by %s on torrent %s", prefix, c.ID, c.Username, torrentIDStr)
-									err := m.bot.AnnounceNyaaComment(service, torrentIDStr, t.Name, c, monitorCfg.Discord.Embed.Thumbnail)
+									err := m.bot.AnnounceNyaaComment("", service, torrentIDStr, t.Name, c, monitorCfg.Discord.Embed.Thumbnail)
 									if err != nil {
 										log.Printf("%s Error announcing comment: %v", prefix, err)
 									}
@@ -366,6 +375,156 @@ func (m *Monitor) checkAnimeToshoService(service string) {
 	}
 }
 
+func (m *Monitor) checkAnirena() {
+	monitorMap, exists := m.config.Monitors["anirena"]
+	if !exists || len(monitorMap) == 0 {
+		return
+	}
+
+	log.Println("[ANIRENA] Starting check...")
+	apiKey := m.config.Config.Anirena.API.Key
+
+	if apiKey == "" {
+		log.Printf("[ANIRENA] Warning: anirena.api.key is not configured, skipping.")
+		return
+	}
+
+	client := scraper.NewAnirenaScraper(apiKey)
+
+	for key, monitorCfg := range monitorMap {
+		prefix := fmt.Sprintf("[ANIRENA][%s]", key)
+		log.Printf("%s Processing monitor", prefix)
+
+		sort := monitorCfg.Sort
+		if sort == "" {
+			sort = "date"
+		}
+		order := monitorCfg.Order
+		if order == "" {
+			order = "desc"
+		}
+
+		type target struct {
+			user  string
+			group string
+			q     string
+		}
+		var targets []target
+
+		if len(monitorCfg.Uploaders) > 0 {
+			for _, u := range monitorCfg.Uploaders {
+				if len(monitorCfg.Keywords) > 0 {
+					for _, k := range monitorCfg.Keywords {
+						targets = append(targets, target{user: u, q: k})
+					}
+				} else {
+					targets = append(targets, target{user: u, q: ""})
+				}
+			}
+		}
+		if len(monitorCfg.Groups) > 0 {
+			for _, g := range monitorCfg.Groups {
+				if len(monitorCfg.Keywords) > 0 {
+					for _, k := range monitorCfg.Keywords {
+						targets = append(targets, target{group: g, q: k})
+					}
+				} else {
+					targets = append(targets, target{group: g, q: ""})
+				}
+			}
+		}
+		if len(monitorCfg.Uploaders) == 0 && len(monitorCfg.Groups) == 0 && len(monitorCfg.Keywords) > 0 {
+			for _, k := range monitorCfg.Keywords {
+				targets = append(targets, target{q: k})
+			}
+		}
+
+		if len(targets) == 0 {
+			log.Printf("Monitor [anirena.%s] has no keywords, uploaders or groups, skipping.", key)
+			continue
+		}
+
+		for _, tRef := range targets {
+			page := 1
+			for {
+				log.Printf("%s Fetching page %d (user: %q, group: %q, q: %q, sort: %s, order: %s)", prefix, page, tRef.user, tRef.group, tRef.q, sort, order)
+				torrents, totalPages, err := client.FetchTorrents(tRef.user, tRef.group, tRef.q, page, sort, order)
+
+				if err != nil {
+					log.Printf("%s Error fetching torrents (page %d): %v", prefix, page, err)
+					break
+				}
+
+				if len(torrents) == 0 {
+					break
+				}
+
+				for _, t := range torrents {
+					if sort == "comments" && order == "desc" && t.CommentCount == 0 {
+						log.Printf("%s Reached torrent with 0 comments (sorted by comments desc), breaking early.", prefix)
+						goto nextTarget
+					}
+
+					if m.isExcluded(t.FullTitle(), monitorCfg.Excludes) {
+						continue
+					}
+
+					storedCount, exists := m.db.GetStoredCommentCount("anirena", t.ID)
+
+					if !exists || t.CommentCount > storedCount {
+						if !exists {
+							log.Printf("%s Found new torrent: %s (%d comments)", prefix, t.ID, t.CommentCount)
+						} else {
+							log.Printf("%s Torrent %s has new comments: %d -> %d", prefix, t.ID, storedCount, t.CommentCount)
+						}
+
+						comments, err := client.FetchComments(t.ID)
+						if err != nil {
+							log.Printf("%s Error fetching comments: %v", prefix, err)
+							continue
+						}
+
+						for _, c := range comments {
+							if !m.db.IsCommentStored("anirena", t.ID, c.ID) {
+								if !m.DumpComments {
+									log.Printf("%s Announcing comment %s by %s on torrent %s", prefix, c.ID, c.Username, t.ID)
+									err := m.bot.AnnounceAnirenaComment("", t.ID, t.FullTitle(), c, monitorCfg.Discord.Embed.Thumbnail)
+									if err != nil {
+										log.Printf("%s Error announcing comment: %v", prefix, err)
+									}
+									time.Sleep(500 * time.Millisecond)
+								} else {
+									log.Printf("%s [DUMP] Storing comment %s by %s on torrent %s", prefix, c.ID, c.Username, t.ID)
+								}
+								var ts int64
+								parsedTime, err := time.Parse("2006-01-02 15:04:05", c.CreatedAt)
+								if err == nil {
+									ts = parsedTime.Unix()
+								} else {
+									ts = time.Now().Unix()
+								}
+								m.db.StoreComment("anirena", t.ID, c.ID, c.Username, c.Body, ts, 0, c.Role, "")
+							}
+						}
+
+						m.db.UpdateTorrent("anirena", t.ID, t.FullTitle(), t.CommentCount)
+					}
+				}
+
+				if monitorCfg.Page.Max > 0 && page >= monitorCfg.Page.Max {
+					break
+				}
+				if page >= totalPages {
+					break
+				}
+				page++
+				time.Sleep(1 * time.Second)
+			}
+		nextTarget:
+		}
+	}
+}
+
 func (m *Monitor) checkNekoBT() {
 	monitorMap, exists := m.config.Monitors["nekobt"]
 	if !exists || len(monitorMap) == 0 {
@@ -475,7 +634,7 @@ func (m *Monitor) checkNekoBTSearch(scr *scraper.NekoBTScraper, params url.Value
 					if !m.db.IsCommentStored("nekobt", t.ID, c.ID) {
 						if !m.DumpComments {
 							log.Printf("%s Announcing comment %s by %s on torrent %s", prefix, c.ID, c.DisplayName, t.ID)
-							m.bot.AnnounceNekoBTComment(t.Title, c, monitorCfg.Discord.Embed.Thumbnail)
+							m.bot.AnnounceNekoBTComment("", t.Title, c, monitorCfg.Discord.Embed.Thumbnail)
 							time.Sleep(500 * time.Millisecond)
 						} else {
 							log.Printf("%s [DUMP] Storing comment %s by %s on torrent %s", prefix, c.ID, c.DisplayName, t.ID)
@@ -522,7 +681,7 @@ func (m *Monitor) processATComments(service string, comments []scraper.ATComment
 			if !m.db.IsCommentStored(service, comment.TorrentID, comment.ID) {
 				if !m.DumpComments {
 					log.Printf("[%s] Announcing comment %s by %s on %s", strings.ToUpper(service), comment.ID, comment.Username, comment.TorrentID)
-					err := m.bot.AnnounceATComment(service, comment.TorrentID, comment.Title, comment, monitorCfg.Discord.Embed.Thumbnail)
+					err := m.bot.AnnounceATComment("", service, comment.TorrentID, comment.Title, comment, monitorCfg.Discord.Embed.Thumbnail)
 					if err != nil {
 						log.Printf("[%s] Error announcing comment: %v", strings.ToUpper(service), err)
 					}

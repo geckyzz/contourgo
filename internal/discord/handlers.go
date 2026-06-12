@@ -680,7 +680,7 @@ func (b *DiscordBot) handleSlashTest(s *discordgo.Session, i *discordgo.Interact
 			}
 
 			firstComment := comments[0]
-			err := b.AnnounceNyaaComment(service, torrentIDStr, targetTorrent.Name, firstComment, "")
+			err := b.AnnounceNyaaComment(i.ChannelID, service, torrentIDStr, targetTorrent.Name, firstComment, "")
 			if err != nil {
 				b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ Error creating test embed: %v", err))
 			} else {
@@ -762,7 +762,7 @@ func (b *DiscordBot) handleSlashTest(s *discordgo.Session, i *discordgo.Interact
 
 		if inspect == "comments" {
 			firstComment := matchingComments[0]
-			err := b.AnnounceATComment(service, firstComment.TorrentID, firstComment.Title, firstComment, "")
+			err := b.AnnounceATComment(i.ChannelID, service, firstComment.TorrentID, firstComment.Title, firstComment, "")
 			if err != nil {
 				b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ Error creating test embed: %v", err))
 			} else {
@@ -781,6 +781,114 @@ func (b *DiscordBot) handleSlashTest(s *discordgo.Session, i *discordgo.Interact
 			c := matchingComments[idx]
 			sb.WriteString(fmt.Sprintf("- **Torrent**: %s\n  - Comment by **%s** (ID: %s)\n  - Message: `%s`\n",
 				c.Title, c.Username, c.ID, c.Message))
+		}
+		b.sendFollowupMessage(s, i.Interaction, sb.String())
+	} else if service == "anirena" {
+		apiKey := b.Config.Config.Anirena.API.Key
+
+		if apiKey == "" {
+			b.sendFollowupMessage(s, i.Interaction, "❌ AniRena API Key is not configured.")
+			return
+		}
+
+		client := scraper.NewAnirenaScraper(apiKey)
+
+		var usernameFilter string
+		var groupFilter string
+		var keywordFilter string
+		if strings.HasPrefix(query, "@") {
+			usernameFilter = strings.TrimPrefix(query, "@")
+		} else if strings.HasPrefix(query, "g:") {
+			groupFilter = strings.TrimPrefix(query, "g:")
+		} else if strings.HasPrefix(query, "group:") {
+			groupFilter = strings.TrimPrefix(query, "group:")
+		} else {
+			keywordFilter = query
+		}
+
+		var allTorrents []scraper.AnirenaTorrent
+		var totalPages int
+
+		for p := 1; ; p++ {
+			log.Printf("Fetching page %d for service anirena (query: %s, user: %s, group: %s)", p, keywordFilter, usernameFilter, groupFilter)
+			torrents, pages, fetchErr := client.FetchTorrents(usernameFilter, groupFilter, keywordFilter, p, "date", "desc")
+			if fetchErr != nil {
+				b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ Error querying AniRena API on page %d: %v", p, fetchErr))
+				return
+			}
+			allTorrents = append(allTorrents, torrents...)
+			totalPages = pages
+			if pageMax > 0 && p >= pageMax {
+				break
+			}
+			if p >= totalPages {
+				break
+			}
+			time.Sleep(500 * time.Millisecond)
+		}
+
+		if len(allTorrents) == 0 {
+			b.sendFollowupMessage(s, i.Interaction, "📭 No torrents found matching query.")
+			return
+		}
+
+		if inspect == "raw" {
+			limit := len(allTorrents)
+			if limit > 3 {
+				limit = 3
+			}
+			jsonData, _ := json.MarshalIndent(allTorrents[:limit], "", "  ")
+			b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("📋 **Raw AniRena Torrents JSON:**\n```json\n%s\n```", string(jsonData)))
+			return
+		}
+
+		if inspect == "comments" {
+			var targetTorrent scraper.AnirenaTorrent
+			found := false
+			for _, t := range allTorrents {
+				if t.CommentCount > 0 {
+					targetTorrent = t
+					found = true
+					break
+				}
+			}
+			if !found {
+				targetTorrent = allTorrents[0]
+			}
+
+			b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("💬 Fetching comments for torrent: **%s** (ID: %s)...", targetTorrent.FullTitle(), targetTorrent.ID))
+
+			comments, err := client.FetchComments(targetTorrent.ID)
+			if err != nil {
+				b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ Error fetching comments: %v", err))
+				return
+			}
+
+			if len(comments) == 0 {
+				b.sendFollowupMessage(s, i.Interaction, "📭 No comments found on this torrent.")
+				return
+			}
+
+			firstComment := comments[0]
+			err = b.AnnounceAnirenaComment(i.ChannelID, targetTorrent.ID, targetTorrent.FullTitle(), firstComment, "")
+			if err != nil {
+				b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ Error creating test embed: %v", err))
+			} else {
+				b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("✅ Test successful! Sent most recent comment from **%s**.", targetTorrent.FullTitle()))
+			}
+			return
+		}
+
+		var sb strings.Builder
+		sb.WriteString(fmt.Sprintf("✅ **Query Results (Service: %s):**\n", service))
+		limit := len(allTorrents)
+		if limit > 5 {
+			limit = 5
+		}
+		for idx := 0; idx < limit; idx++ {
+			t := allTorrents[idx]
+			sb.WriteString(fmt.Sprintf("- **%s** (ID: %s)\n  - Comments: `%d` | Seeders: `%d` | Size: `%s` | Uploaded: `%s`\n",
+				t.FullTitle(), t.ID, t.CommentCount, t.Seeders, t.SizeFmt, t.CreatedAt))
 		}
 		b.sendFollowupMessage(s, i.Interaction, sb.String())
 	} else if service == "nekobt" {
@@ -843,7 +951,7 @@ func (b *DiscordBot) handleSlashTest(s *discordgo.Session, i *discordgo.Interact
 		if inspect == "comments" || inspect == "result" {
 			// Show the most recent comment in an embed (using the announcer logic)
 			lastComment := comments[0]
-			err := b.AnnounceNekoBTComment(firstTorrent.Title, lastComment, "")
+			err := b.AnnounceNekoBTComment(i.ChannelID, firstTorrent.Title, lastComment, "")
 			if err != nil {
 				b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ Error creating test embed: %v", err))
 			} else {
