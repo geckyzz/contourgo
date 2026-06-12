@@ -79,6 +79,8 @@ func (b *DiscordBot) registerSlashCommands(s *discordgo.Session) {
 						{Name: "Sukebei", Value: "sukebei"},
 						{Name: "AnimeTosho (Old)", Value: "animetosho_old"},
 						{Name: "AnimeTosho (New)", Value: "animetosho_new"},
+						{Name: "AnimeTosho Feedback (Old)", Value: "animetosho_old_feedback"},
+						{Name: "AnimeTosho Feedback (New)", Value: "animetosho_new_feedback"},
 						{Name: "nekoBT", Value: "nekobt"},
 						{Name: "AniRena", Value: "anirena"},
 					},

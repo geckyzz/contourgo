@@ -25,12 +25,16 @@ func NewAnimeToshoOldScraper() *AnimeToshoOldScraper {
 	}
 }
 
-func (s *AnimeToshoOldScraper) ScrapeComments(page int) ([]ATComment, bool, error) {
+func (s *AnimeToshoOldScraper) ScrapeComments(page int, feedback bool) ([]ATComment, bool, error) {
 	qVals := url.Values{}
 	if page > 1 {
 		qVals.Set("page", strconv.Itoa(page))
 	}
-	qVals.Add("filter_types[]", "0")
+	if feedback {
+		qVals.Set("feedback", "1")
+	} else {
+		qVals.Add("filter_types[]", "0")
+	}
 
 	u := fmt.Sprintf("%s/comments?%s", s.baseURL, qVals.Encode())
 	req, err := http.NewRequest("GET", u, nil)
@@ -90,9 +94,13 @@ func (s *AnimeToshoOldScraper) ScrapeComments(page int) ([]ATComment, bool, erro
 					torrentTitle = txt
 				}
 			} else if strings.Contains(href, "/feedback") {
-				torrentID = "feedback"
-				torrentTitle = "Feedback"
 				if strings.Contains(href, "#comment") {
+					torrentID = "feedback"
+					torrentTitle = "Feedback"
+					uParsed, err := url.Parse(href)
+					if err == nil && uParsed.RawQuery != "" {
+						torrentID = "feedback?" + uParsed.RawQuery
+					}
 					parts := strings.Split(href, "#comment")
 					if len(parts) > 1 {
 						commentID = parts[1]
@@ -136,6 +144,7 @@ func (s *AnimeToshoOldScraper) ScrapeComments(page int) ([]ATComment, bool, erro
 		}
 
 		messageDiv := sel.Find("div.user_message_c")
+		messageDiv.Find("br").ReplaceWithHtml("\n")
 		message := strings.TrimSpace(messageDiv.Text())
 
 		comments = append(comments, ATComment{

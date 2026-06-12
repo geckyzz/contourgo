@@ -329,7 +329,10 @@ func (m *Monitor) checkAnimeToshoService(service string) {
 	if service == "animetosho_old" {
 		queries[""] = true // Global list
 	} else {
-		for _, monitorCfg := range monitorMap {
+		for key, monitorCfg := range monitorMap {
+			if key == "feedback" {
+				continue // Handled separately
+			}
 			if len(monitorCfg.Keywords) == 0 {
 				queries[""] = true
 			} else {
@@ -350,14 +353,44 @@ func (m *Monitor) checkAnimeToshoService(service string) {
 
 			if service == "animetosho_old" {
 				log.Printf("[%s] Fetching page %d", service, page)
-				comments, hasNext, err = oldScraper.ScrapeComments(page)
+				comments, hasNext, err = oldScraper.ScrapeComments(page, false)
 			} else {
 				log.Printf("[%s] Fetching page %d for query: %q", service, page, q)
-				comments, hasNext, err = newScraper.ScrapeComments(page, q)
+				comments, hasNext, err = newScraper.ScrapeComments(page, q, false)
 			}
 
 			if err != nil {
 				log.Printf("Error scraping %s comments (page %d): %v", service, page, err)
+				break
+			}
+			m.processATComments(service, comments, monitorMap)
+
+			if !hasNext || page >= maxPagesCfg {
+				break
+			}
+			page++
+			time.Sleep(1 * time.Second)
+		}
+	}
+
+	// If a feedback monitor exists, run a separate feedback scrape cycle
+	if _, hasFeedback := monitorMap["feedback"]; hasFeedback {
+		page := 1
+		for {
+			var comments []scraper.ATComment
+			var hasNext bool
+			var err error
+
+			if service == "animetosho_old" {
+				log.Printf("[%s][FEEDBACK] Fetching page %d", service, page)
+				comments, hasNext, err = oldScraper.ScrapeComments(page, true)
+			} else {
+				log.Printf("[%s][FEEDBACK] Fetching page %d", service, page)
+				comments, hasNext, err = newScraper.ScrapeComments(page, "", true)
+			}
+
+			if err != nil {
+				log.Printf("Error scraping %s feedback comments (page %d): %v", service, page, err)
 				break
 			}
 			m.processATComments(service, comments, monitorMap)
@@ -656,16 +689,36 @@ func (m *Monitor) checkNekoBTSearch(scr *scraper.NekoBTScraper, params url.Value
 
 func (m *Monitor) processATComments(service string, comments []scraper.ATComment, monitorMap map[string]config.MonitorConfig) {
 	for _, comment := range comments {
-		for _, monitorCfg := range monitorMap {
+		for key, monitorCfg := range monitorMap {
+			isFeedbackComment := comment.TorrentID == "feedback"
+			isFeedbackMonitor := key == "feedback"
+
+			// Only process feedback comments with feedback monitor config, and vice versa
+			if isFeedbackComment != isFeedbackMonitor {
+				continue
+			}
+
 			matches := false
 			if len(monitorCfg.Keywords) == 0 {
 				matches = true
 			} else {
-				titleLower := strings.ToLower(comment.Title)
-				for _, kw := range monitorCfg.Keywords {
-					if strings.Contains(titleLower, strings.ToLower(kw)) {
-						matches = true
-						break
+				if isFeedbackMonitor {
+					// Check keywords against comment body/message (case-insensitive)
+					msgLower := strings.ToLower(comment.Message)
+					for _, kw := range monitorCfg.Keywords {
+						if strings.Contains(msgLower, strings.ToLower(kw)) {
+							matches = true
+							break
+						}
+					}
+				} else {
+					// Check keywords against torrent title (case-insensitive)
+					titleLower := strings.ToLower(comment.Title)
+					for _, kw := range monitorCfg.Keywords {
+						if strings.Contains(titleLower, strings.ToLower(kw)) {
+							matches = true
+							break
+						}
 					}
 				}
 			}
@@ -674,7 +727,12 @@ func (m *Monitor) processATComments(service string, comments []scraper.ATComment
 				continue
 			}
 
-			if !m.db.IsCommentStored(service, comment.TorrentID, comment.ID) {
+			dbTorrentID := comment.TorrentID
+			if strings.HasPrefix(dbTorrentID, "feedback") {
+				dbTorrentID = "feedback"
+			}
+
+			if !m.db.IsCommentStored(service, dbTorrentID, comment.ID) {
 				if !m.DumpComments {
 					log.Printf("[%s] Announcing comment %s by %s on %s", strings.ToUpper(service), comment.ID, comment.Username, comment.TorrentID)
 					err := m.bot.AnnounceATComment("", service, comment.TorrentID, comment.Title, comment, monitorCfg.Discord.Embed.Thumbnail)
@@ -685,8 +743,8 @@ func (m *Monitor) processATComments(service string, comments []scraper.ATComment
 				} else {
 					log.Printf("[%s] [DUMP] Storing comment %s by %s on %s", strings.ToUpper(service), comment.ID, comment.Username, comment.TorrentID)
 				}
-				m.db.StoreComment(service, comment.TorrentID, comment.ID, comment.Username, comment.Message, comment.Timestamp, 0, "", "")
-				m.db.UpdateTorrent(service, comment.TorrentID, comment.Title, 1)
+				m.db.StoreComment(service, dbTorrentID, comment.ID, comment.Username, comment.Message, comment.Timestamp, 0, "", "")
+				m.db.UpdateTorrent(service, dbTorrentID, comment.Title, 1)
 			}
 		}
 	}

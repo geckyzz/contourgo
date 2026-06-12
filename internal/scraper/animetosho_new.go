@@ -25,7 +25,7 @@ func NewAnimeToshoNewScraper() *AnimeToshoNewScraper {
 	}
 }
 
-func (s *AnimeToshoNewScraper) ScrapeComments(page int, q string) ([]ATComment, bool, error) {
+func (s *AnimeToshoNewScraper) ScrapeComments(page int, q string, feedback bool) ([]ATComment, bool, error) {
 	qVals := url.Values{}
 	if page > 1 {
 		qVals.Set("page", strconv.Itoa(page))
@@ -33,7 +33,11 @@ func (s *AnimeToshoNewScraper) ScrapeComments(page int, q string) ([]ATComment, 
 	if q != "" {
 		qVals.Set("q", q)
 	}
-	qVals.Set("torrent", "1")
+	if feedback {
+		qVals.Set("feedback", "1")
+	} else {
+		qVals.Set("torrent", "1")
+	}
 
 	u := fmt.Sprintf("%s/comments?%s", s.baseURL, qVals.Encode())
 	req, err := http.NewRequest("GET", u, nil)
@@ -94,8 +98,14 @@ func (s *AnimeToshoNewScraper) ScrapeComments(page int, q string) ([]ATComment, 
 					torrentTitle = txt
 				}
 			} else if strings.Contains(href, "/feedback") {
-				torrentID = "feedback"
-				torrentTitle = "Feedback"
+				if strings.Contains(href, "#comment") {
+					torrentID = "feedback"
+					torrentTitle = "Feedback"
+					uParsed, err := url.Parse(href)
+					if err == nil && uParsed.RawQuery != "" {
+						torrentID = "feedback?" + uParsed.RawQuery
+					}
+				}
 			}
 		})
 
@@ -134,6 +144,7 @@ func (s *AnimeToshoNewScraper) ScrapeComments(page int, q string) ([]ATComment, 
 		}
 
 		messageDiv := sel.Find("div.comment_message")
+		messageDiv.Find("br").ReplaceWithHtml("\n")
 		message := strings.TrimSpace(messageDiv.Text())
 
 		comments = append(comments, ATComment{

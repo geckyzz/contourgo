@@ -637,14 +637,16 @@ func (b *DiscordBot) handleSlashTest(s *discordgo.Session, i *discordgo.Interact
 		}
 		b.sendFollowupMessage(s, i.Interaction, sb.String())
 
-	} else if service == "animetosho_old" || service == "animetosho_new" {
+	} else if service == "animetosho_old" || service == "animetosho_new" || service == "animetosho_old_feedback" || service == "animetosho_new_feedback" {
 		var allComments []scraper.ATComment
+		isFeedback := strings.HasSuffix(service, "_feedback")
+		actualService := strings.TrimSuffix(service, "_feedback")
 
-		if service == "animetosho_old" {
+		if actualService == "animetosho_old" {
 			client := scraper.NewAnimeToshoOldScraper()
 			for p := 1; ; p++ {
-				log.Printf("Fetching page %d for service animetosho_old", p)
-				comments, hasNext, scrapeErr := client.ScrapeComments(p)
+				log.Printf("Fetching page %d for service %s", p, service)
+				comments, hasNext, scrapeErr := client.ScrapeComments(p, isFeedback)
 				if scrapeErr != nil {
 					b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ Error scraping AnimeTosho page %d: %v", p, scrapeErr))
 					return
@@ -658,8 +660,8 @@ func (b *DiscordBot) handleSlashTest(s *discordgo.Session, i *discordgo.Interact
 		} else {
 			client := scraper.NewAnimeToshoNewScraper()
 			for p := 1; ; p++ {
-				log.Printf("Fetching page %d for service animetosho_new (query: %q)", p, query)
-				comments, hasNext, scrapeErr := client.ScrapeComments(p, query)
+				log.Printf("Fetching page %d for service %s (query: %q)", p, service, query)
+				comments, hasNext, scrapeErr := client.ScrapeComments(p, query, isFeedback)
 				if scrapeErr != nil {
 					b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ Error scraping AnimeTosho page %d: %v", p, scrapeErr))
 					return

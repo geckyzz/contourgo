@@ -3,6 +3,7 @@ package discord
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
@@ -117,9 +118,9 @@ func (b *DiscordBot) AnnounceATComment(channelID string, service string, torrent
 	}
 
 	var torrentURL, commentURL string
-	if torrentID == "feedback" {
+	if strings.HasPrefix(torrentID, "feedback") {
 		torrentURL = fmt.Sprintf("https://%s/feedback", siteBase)
-		commentURL = fmt.Sprintf("https://%s/feedback#comment%s", siteBase, comment.ID)
+		commentURL = fmt.Sprintf("https://%s/%s#comment%s", siteBase, torrentID, comment.ID)
 	} else {
 		torrentURL = fmt.Sprintf("https://%s/view/%s", siteBase, torrentID)
 		commentURL = fmt.Sprintf("https://%s/view/%s#comment%s", siteBase, torrentID, comment.ID)
@@ -130,16 +131,40 @@ func (b *DiscordBot) AnnounceATComment(channelID string, service string, torrent
 		description = description[:4093] + "..."
 	}
 
+	var embedImage *discordgo.MessageEmbedImage
+	trimmedMsg := strings.TrimSpace(description)
+	if strings.HasPrefix(trimmedMsg, "http://") || strings.HasPrefix(trimmedMsg, "https://") {
+		if !strings.Contains(trimmedMsg, " ") && !strings.Contains(trimmedMsg, "\n") {
+			client := &http.Client{
+				Timeout: 5 * time.Second,
+			}
+			req, err := http.NewRequest("GET", trimmedMsg, nil)
+			if err == nil {
+				req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+				resp, err := client.Do(req)
+				if err == nil {
+					defer resp.Body.Close()
+					contentType := resp.Header.Get("Content-Type")
+					if strings.HasPrefix(contentType, "image/") {
+						embedImage = &discordgo.MessageEmbedImage{URL: trimmedMsg}
+						description = ""
+					}
+				}
+			}
+		}
+	}
+
 	embedColor := 0x00073a
 	if service == "animetosho_new" {
 		embedColor = 0x60a0c0
 	}
 
 	embed := &discordgo.MessageEmbed{
-		Title:       fmt.Sprintf("Comment On: %s", torrentTitle),
+		Title:       fmt.Sprintf("New Comment on: %s", torrentTitle),
 		URL:         torrentURL,
 		Color:       embedColor,
 		Description: description,
+		Image:       embedImage,
 		Author: &discordgo.MessageEmbedAuthor{
 			Name: comment.Username,
 			URL:  commentURL,
