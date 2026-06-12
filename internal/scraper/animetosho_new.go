@@ -130,7 +130,7 @@ func (s *AnimeToshoNewScraper) ScrapeComments(page int, q string, feedback bool)
 		userText := commentUser.Text()
 		var timestamp int64 = time.Now().Unix()
 		if idx := strings.Index(userText, "posted on "); idx != -1 {
-			datePart := userText[idx+len("posted on "):]
+			datePart := strings.TrimSpace(userText[idx+len("posted on "):])
 			datePart = strings.TrimSuffix(datePart, " UTC")
 			datePart = strings.TrimSpace(datePart)
 			timestamp = parseATTime(datePart)

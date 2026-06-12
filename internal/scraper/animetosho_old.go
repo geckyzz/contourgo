@@ -126,10 +126,18 @@ func (s *AnimeToshoOldScraper) ScrapeComments(page int, feedback bool) ([]ATComm
 			}
 		}
 
-		allText := commentUser.Text()
+		commentUserCopy := commentUser.Clone()
+		commentUserCopy.Find("br").ReplaceWithHtml(" ")
+		allText := commentUserCopy.Text()
 		var timeStr string
 		if idx := strings.LastIndex(allText, "—"); idx != -1 {
-			timeStr = allText[idx+1:]
+			leftPart := strings.TrimSpace(allText[:idx])
+			fields := strings.Fields(leftPart)
+			if len(fields) >= 2 {
+				timeStr = strings.Join(fields[len(fields)-2:], " ")
+			} else {
+				timeStr = leftPart
+			}
 		}
 
 		timestamp := parseATTime(timeStr)
