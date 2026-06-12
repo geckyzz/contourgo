@@ -111,6 +111,18 @@ You can define multiple monitors per service.
   `downloads`, `downloads_asc`, `comments`, `comments_asc`, `filesize`, `filesize_asc`.
 - **AniRena**: `sort`: **`date`**, `size`, `seeders`, `leechers`, `completed`, `title`.
 
+#### AnimeTosho Feedback Monitoring
+
+If you define an `animetosho_old` or `animetosho_new` monitor block with the keyname `feedback`
+(for example, `[monitor.animetosho_new.feedback]`), it will monitor general feedback comments
+on AnimeTosho instead of specific torrent comments.
+
+In this mode:
+
+- Keywords are matched against the comment message content (case-insensitive) rather than torrent titles.
+- The comment pages are parsed with parameters preserved for Discord links, while internal database
+  checks are mapped cleanly to prevent duplicate notifications as pages shift.
+
 ---
 
 ## 💬 Slash Commands
