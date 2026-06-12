@@ -1,0 +1,104 @@
+name: CI Build & Release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Binary
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux, windows]
+        goarch: [amd64]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+          cache: true
+
+      - name: Determine Version
+        id: vars
+        run: |
+          # Default fallback version
+          VERSION="0.1.0-dev"
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+
+          if [[ $GITHUB_REF == refs/tags/v* ]]; then
+            # Strip the 'v' prefix from the tag for strict SemVer display
+            VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            VERSION="${VERSION}-${COMMIT_SHA}"
+          fi
+
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+          echo "COMMIT_SHA=${COMMIT_SHA}" >> $GITHUB_ENV
+
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          OUTPUT_NAME="contourgo-${{ matrix.goos }}-${{ matrix.goarch }}"
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            OUTPUT_NAME="${OUTPUT_NAME}.exe"
+          fi
+
+          # Inject version and commit SHA at build time
+          go build -v \
+            -ldflags "-X github.com/geckyzz/contourgo/internal/discord.Version=${{ env.VERSION }} -X github.com/geckyzz/contourgo/internal/discord.CommitSHA=${{ env.COMMIT_SHA }} -s -w" \
+            -o "bin/${OUTPUT_NAME}" \
+            main.go
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: contourgo-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: bin/contourgo-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.exe' || '' }}
+
+  release:
+    name: Create Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Linux Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: contourgo-linux-amd64
+          path: bin/
+
+      - name: Download Windows Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: contourgo-windows-amd64
+          path: bin/
+
+      - name: Release Binaries
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            bin/contourgo-linux-amd64
+            bin/contourgo-windows-amd64.exe
+          draft: false
+          prerelease: false
+          generate_release_notes: true

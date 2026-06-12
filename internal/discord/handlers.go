@@ -58,6 +58,8 @@ func (b *DiscordBot) handleSlashStatus(s *discordgo.Session, i *discordgo.Intera
 		dbSize = fmt.Sprintf("%.2f MB", float64(dbFile.Size())/1024/1024)
 	}
 
+	v, sha := GetVersionInfo()
+
 	embed := &discordgo.MessageEmbed{
 		Title: "📊 Bot Status & Diagnostics",
 		Color: 0x2ecc71,
@@ -69,7 +71,7 @@ func (b *DiscordBot) handleSlashStatus(s *discordgo.Session, i *discordgo.Intera
 			{Name: "Database Size", Value: dbSize, Inline: true},
 			{Name: "Uptime", Value: fmt.Sprintf("<t:%d:R>", b.StartTime.Unix()), Inline: true},
 			{Name: "Memory (Alloc / Sys)", Value: fmt.Sprintf("%.2f MB / %.2f MB", float64(m.Alloc)/1024/1024, float64(m.Sys)/1024/1024), Inline: true},
-			{Name: "Goroutines", Value: strconv.Itoa(runtime.NumGoroutine()), Inline: true},
+			{Name: "Bot Version", Value: fmt.Sprintf("v%s (%s)", v, sha), Inline: true},
 			{Name: "Environment", Value: fmt.Sprintf("Go %s (%s)", runtime.Version(), runtime.GOOS), Inline: true},
 		},
 		Timestamp: time.Now().Format(time.RFC3339),

@@ -3,12 +3,38 @@ package discord
 import (
 	"fmt"
 	"log"
+	"runtime/debug"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/geckyzz/contourgo/internal/config"
 	"github.com/geckyzz/contourgo/internal/db"
 )
+
+var (
+	Version   = "0.0.0"
+	CommitSHA = "unknown"
+)
+
+func GetVersionInfo() (string, string) {
+	v := Version
+	sha := CommitSHA
+
+	if sha == "unknown" || sha == "" {
+		if info, ok := debug.ReadBuildInfo(); ok {
+			for _, setting := range info.Settings {
+				if setting.Key == "vcs.revision" {
+					sha = setting.Value
+					if len(sha) > 7 {
+						sha = sha[:7]
+					}
+					break
+				}
+			}
+		}
+	}
+	return v, sha
+}
 
 type DiscordBot struct {
 	Session         *discordgo.Session
