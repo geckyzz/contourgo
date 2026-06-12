@@ -54,3 +54,16 @@ sort = "comments" # comments, size, id, seeders, leechers, downloads
 order = "desc"    # desc, asc
 page.max = 0
 discord.embed.thumbnail = "https://i.imgur.com/some-anirena-image.png"
+
+[monitor.tsukihime.my_group]
+groups = ["16", "Gecko"] # Monitor specific group ID or group name
+uploaders = ["19", "TokekHutan"] # Monitor specific commenter/uploader user ID or username
+media = ["79", "mal:59970"] # Monitor specific series by TsukiHime ID, mal:ID, anilist:ID, anidb:ID
+keywords = ["Snowball Earth"]
+page.max = 1
+discord.embed.thumbnail = "https://i.imgur.com/some-tsukihime-image.png"
+
+[monitor.tsukihime.feedback]
+keywords = ["magnet", "DDL"] # list of keywords to monitor general feedback comments
+page.max = 1
+discord.embed.thumbnail = "https://i.imgur.com/some-feedback-image.png"

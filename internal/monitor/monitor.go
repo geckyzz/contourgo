@@ -178,6 +178,15 @@ func (m *Monitor) CheckAll(force bool) {
 		}()
 	}
 
+	// 7. Tsukihime
+	if m.hasActiveMonitorsDue("tsukihime", force) {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			m.checkTsukihime(force)
+		}()
+	}
+
 	wg.Wait()
 }
 
@@ -843,4 +852,345 @@ func (m *Monitor) processATComments(service string, comments []scraper.ATComment
 			}
 		}
 	}
+}
+
+func (m *Monitor) checkTsukihime(force bool) {
+	monitorMap, exists := m.config.Monitors["tsukihime"]
+	if !exists || len(monitorMap) == 0 {
+		return
+	}
+
+	hasDueMonitors := false
+	for key, monitorCfg := range monitorMap {
+		if m.isDue("tsukihime", key, monitorCfg, force) {
+			hasDueMonitors = true
+			break
+		}
+	}
+	if !hasDueMonitors {
+		return
+	}
+
+	log.Println("[TSUKIHIME] Starting check...")
+	scr := scraper.NewTsukihimeScraper()
+
+	for key, monitorCfg := range monitorMap {
+		if m.isDue("tsukihime", key, monitorCfg, force) {
+			m.updateLastCheck("tsukihime", key)
+		}
+	}
+
+	// 1. Proactive Search & Cache Torrents
+	targetedTorrents := make(map[string]scraper.TsukihimeTorrent)
+
+	for key, monitorCfg := range monitorMap {
+		if key == "feedback" {
+			continue
+		}
+		prefix := fmt.Sprintf("[TSUKIHIME][%s]", key)
+
+		// 1.1 Keywords -> SearchTorrents
+		for _, kw := range monitorCfg.Keywords {
+			if kw == "" {
+				continue
+			}
+			results, err := scr.SearchTorrents(kw)
+			if err != nil {
+				log.Printf("%s Search error for keyword %q: %v", prefix, kw, err)
+				continue
+			}
+			for _, t := range results {
+				targetedTorrents[strconv.Itoa(t.ID)] = t
+			}
+			time.Sleep(300 * time.Millisecond)
+		}
+
+		// 1.2 Groups -> FetchTorrentsByGroup
+		for _, g := range monitorCfg.Groups {
+			if g == "" {
+				continue
+			}
+			results, err := scr.FetchTorrentsByGroup(g)
+			if err != nil {
+				log.Printf("%s Error fetching by group %q: %v", prefix, g, err)
+				continue
+			}
+			for _, t := range results {
+				targetedTorrents[strconv.Itoa(t.ID)] = t
+			}
+			time.Sleep(300 * time.Millisecond)
+		}
+
+		// 1.3 Media -> FetchTorrentsByAnime (Resolving if needed)
+		for _, med := range monitorCfg.Media {
+			if med == "" {
+				continue
+			}
+			service := "tsukihime"
+			id := med
+			if strings.Contains(med, ":") {
+				parts := strings.SplitN(med, ":", 2)
+				service = parts[0]
+				id = parts[1]
+			}
+
+			internalID := id
+			if service != "tsukihime" {
+				var err error
+				internalID, err = scr.ResolveAnimeID(service, id)
+				if err != nil {
+					log.Printf("%s Error resolving anime ID for %q: %v", prefix, med, err)
+					continue
+				}
+				if internalID == "" {
+					log.Printf("%s Could not resolve internal ID for anime %q", prefix, med)
+					continue
+				}
+				time.Sleep(300 * time.Millisecond)
+			}
+
+			results, err := scr.FetchTorrentsByAnime(internalID)
+			if err != nil {
+				log.Printf("%s Error fetching by anime %q (internal: %s): %v", prefix, med, internalID, err)
+				continue
+			}
+			for _, t := range results {
+				targetedTorrents[strconv.Itoa(t.ID)] = t
+			}
+			time.Sleep(300 * time.Millisecond)
+		}
+	}
+
+	// 2. Fetch Latest Comments
+	maxPages := 1
+	for _, monitorCfg := range monitorMap {
+		if monitorCfg.Page.Max > maxPages {
+			maxPages = monitorCfg.Page.Max
+		}
+	}
+	if maxPages <= 0 {
+		maxPages = 1
+	}
+
+	var allComments []scraper.TsukihimeComment
+	for page := 0; page < maxPages; page++ {
+		resp, err := scr.FetchLatestComments(100, page*100)
+		if err != nil {
+			log.Printf("[TSUKIHIME] Error fetching latest comments (page %d): %v", page, err)
+			break
+		}
+		if len(resp.Comments) == 0 {
+			break
+		}
+		allComments = append(allComments, resp.Comments...)
+		if len(resp.Comments) < 100 {
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+
+	commentMap := make(map[string]scraper.TsukihimeComment)
+	for _, c := range allComments {
+		commentMap[c.GetID()] = c
+	}
+
+	// 3. Process Comments
+	for _, c := range allComments {
+		isFeedbackComment := c.TargetType == "feedback"
+		isTorrentComment := c.TargetType == "torrent"
+
+		if !isFeedbackComment && !isTorrentComment {
+			continue
+		}
+
+		var torrentID string
+		if isFeedbackComment {
+			torrentID = "feedback"
+		} else {
+			torrentID = c.GetTargetID()
+		}
+		if torrentID == "" {
+			continue
+		}
+
+		commentID := c.GetID()
+
+		for key, monitorCfg := range monitorMap {
+			isFeedbackMonitor := key == "feedback"
+			if isFeedbackComment != isFeedbackMonitor {
+				continue
+			}
+
+			if m.db.IsCommentStored("tsukihime", torrentID, commentID) {
+				continue
+			}
+
+			var details *scraper.TsukihimeTorrentDetails
+			if isFeedbackComment {
+				details = &scraper.TsukihimeTorrentDetails{Name: "Feedback"}
+			} else {
+				// Use targetedTorrents cache
+				t, ok := targetedTorrents[torrentID]
+				if !ok {
+					// Optional: Fallback to direct fetch if we really care about all comments
+					// But user suggested search-first strategy, so we only process targeted ones.
+					continue
+				}
+				details = &scraper.TsukihimeTorrentDetails{
+					ID:    t.ID,
+					Name:  t.Name,
+					Anime: t.Anime,
+					Group: t.Group,
+				}
+			}
+
+			if !m.matchTsukihimeComment(c, details, monitorCfg, isFeedbackComment) {
+				continue
+			}
+
+			parentText := ""
+			parentID := c.GetParentID()
+			if parentID != "" {
+				if parentComment, ok := commentMap[parentID]; ok {
+					parentText = parentComment.GetText()
+				} else {
+					if dbComment, ok := m.db.GetComment("tsukihime", torrentID, parentID); ok {
+						parentText = dbComment.Message
+					}
+				}
+			}
+
+			if !m.DumpComments {
+				log.Printf("[TSUKIHIME][%s] Announcing comment %s by %s on %s", key, commentID, c.GetDisplayName(), torrentID)
+				err := m.bot.AnnounceTsukihimeComment("", details.Name, c, parentText, monitorCfg.Discord.Embed.Thumbnail)
+				if err != nil {
+					log.Printf("[TSUKIHIME][%s] Error announcing comment: %v", key, err)
+				}
+				time.Sleep(500 * time.Millisecond)
+			} else {
+				log.Printf("[TSUKIHIME][%s] [DUMP] Storing comment %s by %s on %s", key, commentID, c.GetDisplayName(), torrentID)
+			}
+
+			var ts int64
+			parsedTime, err := time.Parse(time.RFC3339, c.CreatedAt)
+			if err == nil {
+				ts = parsedTime.Unix()
+			} else {
+				ts = time.Now().Unix()
+			}
+			avatarURL := ""
+			if c.Author != nil && c.Author.AvatarHash != "" {
+				avatarURL = fmt.Sprintf("https://tsukihime.org/cdn/pfp/%s", c.Author.AvatarHash)
+			}
+			m.db.StoreComment("tsukihime", torrentID, commentID, c.GetDisplayName(), c.GetText(), ts, 0, "", avatarURL)
+			m.db.UpdateTorrent("tsukihime", torrentID, details.Name, 1)
+		}
+	}
+}
+
+func (m *Monitor) matchTsukihimeComment(c scraper.TsukihimeComment, details *scraper.TsukihimeTorrentDetails, monitorCfg config.MonitorConfig, isFeedback bool) bool {
+	if m.isExcluded(details.Name, monitorCfg.Excludes) {
+		return false
+	}
+
+	if isFeedback {
+		hasKeywordFilter := len(monitorCfg.Keywords) > 0
+
+		if !hasKeywordFilter {
+			return true
+		}
+
+		keywordMatched := false
+		if hasKeywordFilter {
+			commentTextLower := strings.ToLower(c.GetText())
+			for _, kw := range monitorCfg.Keywords {
+				if strings.Contains(commentTextLower, strings.ToLower(kw)) {
+					keywordMatched = true
+					break
+				}
+			}
+		}
+
+		return keywordMatched
+	}
+
+	hasGroupFilter := len(monitorCfg.Groups) > 0
+	hasMediaFilter := len(monitorCfg.Media) > 0
+	hasKeywordFilter := len(monitorCfg.Keywords) > 0
+
+	if !hasGroupFilter && !hasMediaFilter && !hasKeywordFilter {
+		return true
+	}
+
+	groupMatched := false
+	if hasGroupFilter && details.Group != nil {
+		gID := scraper.GetStringOrInt(details.Group.ID)
+		gName := details.Group.Name
+		for _, g := range monitorCfg.Groups {
+			if strings.EqualFold(g, gID) || strings.EqualFold(g, gName) {
+				groupMatched = true
+				break
+			}
+		}
+	}
+
+	mediaMatched := false
+	if hasMediaFilter && details.Anime != nil {
+		animeID := scraper.GetStringOrInt(details.Anime.ID)
+		malID := scraper.GetStringOrInt(details.Anime.MAL)
+		anilistID := scraper.GetStringOrInt(details.Anime.Anilist)
+		anidbID := scraper.GetStringOrInt(details.Anime.AniDB)
+		animeTitle := details.Anime.Title
+		animeEngTitle := details.Anime.EnglishTitle
+
+		for _, med := range monitorCfg.Media {
+			if strings.HasPrefix(med, "mal:") {
+				val := strings.TrimPrefix(med, "mal:")
+				if val == malID {
+					mediaMatched = true
+					break
+				}
+			} else if strings.HasPrefix(med, "anilist:") {
+				val := strings.TrimPrefix(med, "anilist:")
+				if val == anilistID {
+					mediaMatched = true
+					break
+				}
+			} else if strings.HasPrefix(med, "anidb:") {
+				val := strings.TrimPrefix(med, "anidb:")
+				if val == anidbID {
+					mediaMatched = true
+					break
+				}
+			} else if strings.HasPrefix(med, "tsukihime:") {
+				val := strings.TrimPrefix(med, "tsukihime:")
+				if val == animeID {
+					mediaMatched = true
+					break
+				}
+			} else {
+				if med == animeID || med == malID || med == anilistID || med == anidbID || strings.EqualFold(med, animeTitle) || strings.EqualFold(med, animeEngTitle) {
+					mediaMatched = true
+					break
+				}
+			}
+		}
+	}
+
+	keywordMatched := false
+	if hasKeywordFilter {
+		titleLower := strings.ToLower(details.Name)
+		commentTextLower := strings.ToLower(c.GetText())
+		for _, kw := range monitorCfg.Keywords {
+			kwLower := strings.ToLower(kw)
+			if strings.Contains(titleLower, kwLower) || strings.Contains(commentTextLower, kwLower) {
+				keywordMatched = true
+				break
+			}
+		}
+	}
+
+	return (hasGroupFilter && groupMatched) ||
+		(hasMediaFilter && mediaMatched) ||
+		(hasKeywordFilter && keywordMatched)
 }

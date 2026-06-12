@@ -896,6 +896,66 @@ func (b *DiscordBot) handleSlashTest(s *discordgo.Session, i *discordgo.Interact
 			}
 			return
 		}
+	} else if service == "tsukihime" {
+		scr := scraper.NewTsukihimeScraper()
+		torrents, err := scr.SearchTorrents(query)
+		if err != nil {
+			b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ TsukiHime Search Error: %v", err))
+			return
+		}
+
+		if len(torrents) == 0 {
+			b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("📭 No torrents found for query: `%s`", query))
+			return
+		}
+
+		if inspect == "raw" {
+			limit := len(torrents)
+			if limit > 3 {
+				limit = 3
+			}
+			jsonData, _ := json.MarshalIndent(torrents[:limit], "", "  ")
+			b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("📋 **Raw TsukiHime Torrents JSON:**\n```json\n%s\n```", string(jsonData)))
+			return
+		}
+
+		if inspect == "comments" {
+			firstTorrent := torrents[0]
+			torrentIDStr := strconv.Itoa(firstTorrent.ID)
+			b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("💬 Fetching comments for torrent: **%s** (ID: %s)...", firstTorrent.Name, torrentIDStr))
+
+			comments, err := scr.FetchComments(torrentIDStr, firstTorrent.Name)
+			if err != nil {
+				b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ Error fetching comments: %v", err))
+				return
+			}
+
+			if len(comments) == 0 {
+				b.sendFollowupMessage(s, i.Interaction, "📭 No comments found on this torrent (within latest 100).")
+				return
+			}
+
+			firstComment := comments[0]
+			err = b.AnnounceTsukihimeComment(i.ChannelID, firstTorrent.Name, firstComment, firstComment.ParentText, "")
+			if err != nil {
+				b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ Error creating test embed: %v", err))
+			} else {
+				b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("✅ Test successful! Sent most recent comment from **%s**.", firstTorrent.Name))
+			}
+			return
+		}
+
+		var sb strings.Builder
+		sb.WriteString(fmt.Sprintf("✅ **TsukiHime Query Results for `%s`:**\n", query))
+		limit := len(torrents)
+		if limit > 5 {
+			limit = 5
+		}
+		for idx := 0; idx < limit; idx++ {
+			t := torrents[idx]
+			sb.WriteString(fmt.Sprintf("- **%s** (ID: %d)\n", t.Name, t.ID))
+		}
+		b.sendFollowupMessage(s, i.Interaction, sb.String())
 	}
 }
 

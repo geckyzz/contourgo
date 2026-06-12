@@ -91,6 +91,24 @@ func (db *DB) StoreComment(service, torrentID, commentID, username, message stri
 	return err
 }
 
+func (db *DB) GetComment(service, torrentID, commentID string) (Comment, bool) {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	var c Comment
+	err := db.Conn.QueryRow(`
+		SELECT service, torrent_id, comment_id, username, message, timestamp, position, user_role, avatar_url 
+		FROM comments 
+		WHERE service = ? AND torrent_id = ? AND comment_id = ?
+	`, service, torrentID, commentID).Scan(&c.Service, &c.TorrentID, &c.CommentID, &c.Username, &c.Message, &c.Timestamp, &c.Position, &c.UserRole, &c.AvatarURL)
+	if err == sql.ErrNoRows {
+		return c, false
+	}
+	if err != nil {
+		return c, false
+	}
+	return c, true
+}
+
 type Torrent struct {
 	Service       string
 	TorrentID     string

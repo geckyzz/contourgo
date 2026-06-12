@@ -261,6 +261,95 @@ func (b *DiscordBot) AnnounceNekoBTComment(channelID string, torrentTitle string
 	return err
 }
 
+func (b *DiscordBot) AnnounceTsukihimeComment(channelID string, torrentTitle string, comment scraper.TsukihimeComment, parentText string, embedThumbnail string) error {
+	targetChannel := b.AnnounceChannel
+	if channelID != "" {
+		targetChannel = channelID
+	}
+
+	var torrentURL string
+	if comment.TargetType == "feedback" {
+		torrentURL = "https://tsukihime.org/feedback"
+	} else {
+		torrentURL = fmt.Sprintf("https://tsukihime.org/view/%s", comment.GetTargetID())
+	}
+	// userURL := fmt.Sprintf("https://tsukihime.org/u/%s", comment.GetUsername())
+
+	var userAvatarURL string
+	if comment.Author != nil && comment.Author.AvatarHash != "" {
+		userAvatarURL = fmt.Sprintf("https://tsukihime.org/cdn/pfp/%s", comment.Author.AvatarHash)
+	} else {
+		userAvatarURL = "https://tsukihime.org/static/img/avatar/default.png"
+	}
+
+	displayName := comment.GetDisplayName()
+	description := comment.GetText() // Removed resolveTsukihimeMentions
+	if len(description) > 4096 {
+		description = description[:4093] + "..."
+	}
+
+	embed := &discordgo.MessageEmbed{
+		Title: trimField(displayName),
+		// URL:   userURL, // Removed as there are no user pages
+		Author: &discordgo.MessageEmbedAuthor{
+			Name:    trimField(torrentTitle),
+			URL:     torrentURL,
+			IconURL: userAvatarURL,
+		},
+		Description: description,
+		Color:       0xf25aa6, // TsukiHime Pink
+		Footer: &discordgo.MessageEmbedFooter{
+			Text: "TsukiHime Comments",
+		},
+	}
+
+	if imgURL := extractImageURL(comment.GetText()); imgURL != "" {
+		if strings.HasPrefix(imgURL, "/") {
+			imgURL = "https://tsukihime.org" + imgURL
+		}
+		embed.Image = &discordgo.MessageEmbedImage{URL: imgURL}
+		embed.Description = ""
+	}
+
+	if comment.CreatedAt != "" {
+		t, err := time.Parse(time.RFC3339, comment.CreatedAt)
+		if err == nil {
+			embed.Timestamp = t.Format(time.RFC3339)
+		}
+	}
+
+	if embedThumbnail != "" {
+		embed.Thumbnail = &discordgo.MessageEmbedThumbnail{
+			URL: embedThumbnail,
+		}
+	} else if userAvatarURL != "" {
+		embed.Thumbnail = &discordgo.MessageEmbedThumbnail{
+			URL: userAvatarURL,
+		}
+	}
+
+	if comment.GetParentID() != "" && parentText != "" {
+		// parentText = resolveTsukihimeMentions(parentText) // Removed as there are no user pages
+		if len(parentText) > 1000 {
+			parentText = parentText[:997] + "..."
+		}
+		embed.Fields = []*discordgo.MessageEmbedField{
+			{
+				Name:  "↪️ Replying to",
+				Value: parentText,
+			},
+		}
+	}
+
+	log.Printf("[POST] Announcing TsukiHime comment on torrent '%s' to channel %s", torrentTitle, targetChannel)
+	_, err := b.Session.ChannelMessageSendEmbed(targetChannel, embed)
+	return err
+}
+
+func resolveTsukihimeMentions(text string) string {
+	return text // Just return text as is
+}
+
 var nekoBTMentionRegex = regexp.MustCompile(`@([a-zA-Z0-9_-]+)`)
 
 var (

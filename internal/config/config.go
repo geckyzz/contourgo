@@ -296,7 +296,7 @@ func (cfg *Config) LogConfigSummary() {
 			totalMonitors++
 			details := fmt.Sprintf("keywords=%v, uploaders=%v, sort=%q, order=%q, page_max=%d",
 				m.Keywords, m.Uploaders, m.Sort, m.Order, m.Page.Max)
-			if service == "nekobt" {
+			if service == "nekobt" || service == "tsukihime" {
 				details = fmt.Sprintf("groups=%v, uploaders=%v, media=%v, keywords=%v, sort=%q, page_max=%d",
 					m.Groups, m.Uploaders, m.Media, m.Keywords, m.Sort, m.Page.Max)
 			}
