@@ -29,12 +29,12 @@ order = "desc"
 page.max = 0
 discord.embed.thumbnail = "https://i.imgur.com/some-sukebei-image.png"
 
-[monitor.animetosho.new.all]
+[monitor.animetosho_new.all]
 keywords = ["Gecko"]
 page.max = 5
 discord.embed.thumbnail = "https://i.imgur.com/some-at-new-image.png"
 
-[monitor.animetosho.old.all]
+[monitor.animetosho_old.all]
 keywords = ["Gecko", "geckyzz", "CicakRumah", "TokekHutan"]
 page.max = 5
 discord.embed.thumbnail = "https://i.imgur.com/some-at-image.png"

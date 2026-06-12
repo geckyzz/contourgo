@@ -148,23 +148,6 @@ func LoadConfig(path string) (*Config, error) {
 							mData["animetosho_new"] = xyz
 						}
 
-						// Handle Dotted/Nested Aliases [monitor.animetosho.old], etc.
-						if at, ok := mData["animetosho"].(map[string]interface{}); ok {
-							if org, ok := at["org"].(map[string]interface{}); ok && mData["animetosho_old"] == nil {
-								mData["animetosho_old"] = org
-							}
-							if old, ok := at["old"].(map[string]interface{}); ok && mData["animetosho_old"] == nil {
-								mData["animetosho_old"] = old
-							}
-
-							if xyz, ok := at["xyz"].(map[string]interface{}); ok && mData["animetosho_new"] == nil {
-								mData["animetosho_new"] = xyz
-							}
-							if new, ok := at["new"].(map[string]interface{}); ok && mData["animetosho_new"] == nil {
-								mData["animetosho_new"] = new
-							}
-						}
-
 						mBytes, _ := toml.Marshal(mData)
 						toml.Unmarshal(mBytes, &cfg.Monitors)
 					}
