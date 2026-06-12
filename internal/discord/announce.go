@@ -59,13 +59,13 @@ func (b *DiscordBot) AnnounceNyaaComment(channelID string, service, torrentID, t
 	torrentURL := fmt.Sprintf("https://%s/view/%s", siteBase, torrentID)
 
 	embed := &discordgo.MessageEmbed{
-		Title:       fmt.Sprintf("New Comment on: %s", torrentTitle),
-		URL:         torrentURL,
+		Title:       trimField(authorName),
+		URL:         authorURL,
 		Color:       embedColor,
 		Description: description,
 		Author: &discordgo.MessageEmbedAuthor{
-			Name:    authorName,
-			URL:     authorURL,
+			Name:    trimField(torrentTitle),
+			URL:     torrentURL,
 			IconURL: userAvatarURL,
 		},
 		Fields: []*discordgo.MessageEmbedField{
@@ -143,14 +143,14 @@ func (b *DiscordBot) AnnounceATComment(channelID string, service string, torrent
 	}
 
 	embed := &discordgo.MessageEmbed{
-		Title:       fmt.Sprintf("New Comment on: %s", torrentTitle),
-		URL:         torrentURL,
+		Title:       trimField(comment.Username),
+		URL:         commentURL,
 		Color:       embedColor,
 		Description: description,
 		Image:       embedImage,
 		Author: &discordgo.MessageEmbedAuthor{
-			Name: comment.Username,
-			URL:  commentURL,
+			Name: trimField(torrentTitle),
+			URL:  torrentURL,
 		},
 		Fields: []*discordgo.MessageEmbedField{
 			{Name: "Comment ID", Value: fmt.Sprintf("[%s](%s)", comment.ID, commentURL), Inline: true},
@@ -208,11 +208,11 @@ func (b *DiscordBot) AnnounceNekoBTComment(channelID string, torrentTitle string
 	}
 
 	embed := &discordgo.MessageEmbed{
-		Title: fmt.Sprintf("New Comment on %s", torrentTitle),
-		URL:   torrentURL,
+		Title: trimField(displayName),
+		URL:   userURL,
 		Author: &discordgo.MessageEmbedAuthor{
-			Name:    displayName,
-			URL:     userURL,
+			Name:    trimField(torrentTitle),
+			URL:     torrentURL,
 			IconURL: userAvatarURL,
 		},
 		Description: description,
@@ -334,14 +334,14 @@ func (b *DiscordBot) AnnounceAnirenaComment(channelID, torrentID, torrentTitle s
 	embedColor := 0x4f46e5
 
 	embed := &discordgo.MessageEmbed{
-		Title:       fmt.Sprintf("New Comment on: %s", torrentTitle),
-		URL:         commentURL,
+		Title:       trimField(authorName),
+		URL:         authorURL,
 		Color:       embedColor,
 		Description: description,
 		Image:       embedImage,
 		Author: &discordgo.MessageEmbedAuthor{
-			Name: authorName,
-			URL:  authorURL,
+			Name: trimField(torrentTitle),
+			URL:  commentURL,
 		},
 		Fields: []*discordgo.MessageEmbedField{
 			{Name: "Comment ID", Value: fmt.Sprintf("`%s`", comment.ID), Inline: true},
@@ -371,4 +371,12 @@ func (b *DiscordBot) AnnounceAnirenaComment(channelID, torrentID, torrentTitle s
 
 func urlPathEscape(s string) string {
 	return strings.ReplaceAll(url.PathEscape(s), "+", "%20")
+}
+
+func trimField(s string) string {
+	runes := []rune(s)
+	if len(runes) > 253 {
+		return string(runes[:253])
+	}
+	return s
 }
