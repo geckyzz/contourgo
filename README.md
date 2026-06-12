@@ -81,16 +81,16 @@ For initial database seeding without spamming Discord:
 
 You can define multiple monitors per service.
 
-| Option      | Description                                        | Supported Services    |
-| :---------- | :------------------------------------------------- | :-------------------- |
-| `keywords`  | List of search strings                             | All                   |
-| `excludes`  | List of glob patterns to skip                      | All                   |
+| Option      | Description                                        | Supported Services             |
+| :---------- | :------------------------------------------------- | :----------------------------- |
+| `keywords`  | List of search strings                             | All                            |
+| `excludes`  | List of glob patterns to skip                      | All                            |
 | `uploaders` | List of uploader usernames or IDs                  | Nyaa, Sukebei, NekoBT, AniRena |
-| `groups`    | List of Group IDs or Group Slugs                   | NekoBT, AniRena       |
-| `media`     | List of Media IDs (`s123`, `tmdb:123`, `tvdb:456`) | NekoBT                |
+| `groups`    | List of Group IDs or Group Slugs                   | NekoBT, AniRena                |
+| `media`     | List of Media IDs (`s123`, `tmdb:123`, `tvdb:456`) | NekoBT                         |
 | `sort`      | Sorting method (see below)                         | Nyaa, Sukebei, NekoBT, AniRena |
-| `order`     | `asc` or `desc`                                    | Nyaa, Sukebei, AniRena |
-| `page.max`  | Max pages to scan per check                        | All                   |
+| `order`     | `asc` or `desc`                                    | Nyaa, Sukebei, AniRena         |
+| `page.max`  | Max pages to scan per check                        | All                            |
 
 **Supported Services**: `nyaa`, `sukebei`, `animetosho_old`, `animetosho_new`, `nekobt`, `anirena`.
 
