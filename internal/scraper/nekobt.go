@@ -57,7 +57,7 @@ func (s *NekoBTScraper) doRequest(req *http.Request) ([]byte, error) {
 					}
 				}
 			}
-			log.Printf("[NekoBT] Rate limited. Retrying after %.2fs...", retryAfter)
+			log.Printf("[nekoBT] Rate limited. Retrying after %.2fs...", retryAfter)
 			time.Sleep(time.Duration(retryAfter*1000) * time.Millisecond)
 
 			// Re-create request for retry since body might be closed or state changed
@@ -95,7 +95,7 @@ func (s *NekoBTScraper) SearchTorrents(params url.Values) ([]NekoBTTorrent, erro
 	}
 
 	if nResp.Error {
-		return nil, fmt.Errorf("NekoBT error: %s", nResp.Message)
+		return nil, fmt.Errorf("nekoBT error: %s", nResp.Message)
 	}
 
 	// Data is interface{}, need to re-marshal or use map
@@ -155,7 +155,7 @@ func (s *NekoBTScraper) FetchComments(torrentID string, title string) ([]NekoBTC
 	}
 
 	if nResp.Error {
-		return nil, fmt.Errorf("NekoBT error: %s", nResp.Message)
+		return nil, fmt.Errorf("nekoBT error: %s", nResp.Message)
 	}
 
 	dataBytes, _ := json.Marshal(nResp.Data)

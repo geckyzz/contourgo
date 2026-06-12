@@ -291,7 +291,7 @@ func (cfg *Config) LogConfigSummary() {
 	log.Println("--- Configuration Summary ---")
 	log.Printf("Monitor Interval: %s (%v)", cfg.Config.Monitor.By, ParseISO8601Duration(cfg.Config.Monitor.By))
 	log.Printf("Nyaa Proxy URL: %q", cfg.Config.Nyaa.Proxy.URL)
-	log.Printf("NekoBT API Key: %s", func() string {
+	log.Printf("nekoBT API Key: %s", func() string {
 		if cfg.Config.Nekobt.API.Key != "" {
 			return "PRESENT"
 		}

@@ -852,7 +852,7 @@ func (b *DiscordBot) handleSlashTest(s *discordgo.Session, i *discordgo.Interact
 
 		torrents, err := scr.SearchTorrents(params)
 		if err != nil {
-			b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ NekoBT Search Error: %v", err))
+			b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ nekoBT Search Error: %v", err))
 			return
 		}
 
@@ -879,7 +879,7 @@ func (b *DiscordBot) handleSlashTest(s *discordgo.Session, i *discordgo.Interact
 				limit = 3
 			}
 			jsonData, _ := json.MarshalIndent(comments[:limit], "", "  ")
-			b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("📋 **Raw NekoBT Comments JSON:**\n```json\n%s\n```", string(jsonData)))
+			b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("📋 **Raw nekoBT Comments JSON:**\n```json\n%s\n```", string(jsonData)))
 			return
 		}
 

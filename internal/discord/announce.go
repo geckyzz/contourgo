@@ -208,9 +208,9 @@ func (b *DiscordBot) AnnounceNekoBTComment(channelID string, torrentTitle string
 			IconURL: userAvatarURL,
 		},
 		Description: description,
-		Color:       0xfc913a, // NekoBT Orange
+		Color:       0xfc913a, // nekoBT Orange
 		Footer: &discordgo.MessageEmbedFooter{
-			Text: "NekoBT Comments",
+			Text: "nekoBT Comments",
 		},
 	}
 
@@ -248,7 +248,7 @@ func (b *DiscordBot) AnnounceNekoBTComment(channelID string, torrentTitle string
 		})
 	}
 
-	log.Printf("[POST] Announcing NekoBT comment on torrent '%s' to channel %s", torrentTitle, targetChannel)
+	log.Printf("[POST] Announcing nekoBT comment on torrent '%s' to channel %s", torrentTitle, targetChannel)
 	_, err := b.Session.ChannelMessageSendEmbed(targetChannel, embed)
 	return err
 }
