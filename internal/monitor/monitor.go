@@ -352,7 +352,7 @@ func (m *Monitor) checkNyaaSukebeiService(service string, force bool) {
 							}
 						}
 
-						m.db.UpdateTorrent(service, torrentIDStr, t.Name, t.Comments)
+						m.db.UpdateTorrent(service, torrentIDStr, t.Name, len(comments))
 					}
 				}
 
@@ -640,7 +640,7 @@ func (m *Monitor) checkAnirena(force bool) {
 							}
 						}
 
-						m.db.UpdateTorrent("anirena", t.ID, t.FullTitle(), t.CommentCount)
+						m.db.UpdateTorrent("anirena", t.ID, t.FullTitle(), len(comments))
 					}
 				}
 
@@ -819,7 +819,7 @@ func (m *Monitor) checkNekoBTSearch(scr *scraper.NekoBTScraper, params url.Value
 						m.db.StoreComment("nekobt", t.ID, c.ID, c.DisplayName, c.Text, c.CreatedAt/1000, 0, "", avatarURL)
 					}
 				}
-				m.db.UpdateTorrent("nekobt", t.ID, t.Title, commentCount)
+				m.db.UpdateTorrent("nekobt", t.ID, t.Title, len(comments))
 			}
 		}
 		if len(torrents) < 50 {
