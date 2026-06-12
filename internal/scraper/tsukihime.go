@@ -175,8 +175,8 @@ func (s *TsukihimeScraper) FetchLatestComments(limit int, offset int) (*Tsukihim
 	return &resp, nil
 }
 
-func (s *TsukihimeScraper) FetchTorrentsByAnime(animeID string) ([]TsukihimeTorrent, error) {
-	u := fmt.Sprintf("%s/v1/animes/%s?limit=100", s.baseURL, animeID)
+func (s *TsukihimeScraper) FetchTorrentsByAnime(animeID string, limit int, offset int) ([]TsukihimeTorrent, error) {
+	u := fmt.Sprintf("%s/v1/animes/%s?limit=%d&offset=%d", s.baseURL, animeID, limit, offset)
 	req, _ := http.NewRequest("GET", u, nil)
 
 	body, err := s.doRequest(req)
@@ -194,8 +194,8 @@ func (s *TsukihimeScraper) FetchTorrentsByAnime(animeID string) ([]TsukihimeTorr
 	return resp.Results, nil
 }
 
-func (s *TsukihimeScraper) FetchTorrentsByGroup(groupID string) ([]TsukihimeTorrent, error) {
-	u := fmt.Sprintf("%s/v1/groups/%s?limit=100", s.baseURL, groupID)
+func (s *TsukihimeScraper) FetchTorrentsByGroup(groupID string, limit int, offset int) ([]TsukihimeTorrent, error) {
+	u := fmt.Sprintf("%s/v1/groups/%s?limit=%d&offset=%d", s.baseURL, groupID, limit, offset)
 	req, _ := http.NewRequest("GET", u, nil)
 
 	body, err := s.doRequest(req)
@@ -232,8 +232,8 @@ func (s *TsukihimeScraper) ResolveAnimeID(service, id string) (string, error) {
 	return GetStringOrInt(resp.ID), nil
 }
 
-func (s *TsukihimeScraper) SearchTorrents(query string) ([]TsukihimeTorrent, error) {
-	u := fmt.Sprintf("%s/v1/search/torrents?q=%s&limit=100", s.baseURL, url.QueryEscape(query))
+func (s *TsukihimeScraper) SearchTorrents(query string, limit int, offset int) ([]TsukihimeTorrent, error) {
+	u := fmt.Sprintf("%s/v1/search/torrents?q=%s&limit=%d&offset=%d", s.baseURL, url.QueryEscape(query), limit, offset)
 	req, _ := http.NewRequest("GET", u, nil)
 
 	body, err := s.doRequest(req)

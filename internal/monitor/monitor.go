@@ -931,6 +931,16 @@ func (m *Monitor) checkTsukihime(force bool) {
 		}
 	}
 
+	maxPages := 1
+	for _, monitorCfg := range monitorMap {
+		if monitorCfg.Page.Max > maxPages {
+			maxPages = monitorCfg.Page.Max
+		}
+	}
+	if maxPages <= 0 {
+		maxPages = 1
+	}
+
 	// 1. Proactive Search & Cache Torrents
 	targetedTorrents := make(map[string]scraper.TsukihimeTorrent)
 
@@ -946,16 +956,21 @@ func (m *Monitor) checkTsukihime(force bool) {
 			if kw == "" {
 				continue
 			}
-			log.Printf("%s Searching torrents for keyword: %q (page 1, limit 100)", prefix, kw)
-			results, err := scr.SearchTorrents(kw)
-			if err != nil {
-				log.Printf("%s Search error for keyword %q: %v", prefix, kw, err)
-				continue
+			for page := 0; page < maxPages; page++ {
+				log.Printf("%s Searching torrents for keyword: %q (offset: %d, limit 100)", prefix, kw, page*100)
+				results, err := scr.SearchTorrents(kw, 100, page*100)
+				if err != nil {
+					log.Printf("%s Search error for keyword %q: %v", prefix, kw, err)
+					break
+				}
+				for _, t := range results {
+					targetedTorrents[strconv.Itoa(t.ID)] = t
+				}
+				if len(results) < 100 {
+					break
+				}
+				time.Sleep(300 * time.Millisecond)
 			}
-			for _, t := range results {
-				targetedTorrents[strconv.Itoa(t.ID)] = t
-			}
-			time.Sleep(300 * time.Millisecond)
 		}
 
 		// 1.2 Groups -> FetchTorrentsByGroup
@@ -963,16 +978,21 @@ func (m *Monitor) checkTsukihime(force bool) {
 			if g == "" {
 				continue
 			}
-			log.Printf("%s Fetching torrents for group: %q (page 1, limit 100)", prefix, g)
-			results, err := scr.FetchTorrentsByGroup(g)
-			if err != nil {
-				log.Printf("%s Error fetching by group %q: %v", prefix, g, err)
-				continue
+			for page := 0; page < maxPages; page++ {
+				log.Printf("%s Fetching torrents for group: %q (offset: %d, limit 100)", prefix, g, page*100)
+				results, err := scr.FetchTorrentsByGroup(g, 100, page*100)
+				if err != nil {
+					log.Printf("%s Error fetching by group %q: %v", prefix, g, err)
+					break
+				}
+				for _, t := range results {
+					targetedTorrents[strconv.Itoa(t.ID)] = t
+				}
+				if len(results) < 100 {
+					break
+				}
+				time.Sleep(300 * time.Millisecond)
 			}
-			for _, t := range results {
-				targetedTorrents[strconv.Itoa(t.ID)] = t
-			}
-			time.Sleep(300 * time.Millisecond)
 		}
 
 		// 1.3 Media -> FetchTorrentsByAnime (Resolving if needed)
@@ -1004,36 +1024,35 @@ func (m *Monitor) checkTsukihime(force bool) {
 				time.Sleep(300 * time.Millisecond)
 			}
 
-			log.Printf("%s Fetching torrents for anime %q (internal ID: %s) (page 1, limit 100)", prefix, med, internalID)
-			results, err := scr.FetchTorrentsByAnime(internalID)
-			if err != nil {
-				log.Printf("%s Error fetching by anime %q (internal: %s): %v", prefix, med, internalID, err)
-				continue
+			for page := 0; page < maxPages; page++ {
+				if service == "tsukihime" {
+					log.Printf("%s Fetching torrents for anime %q (offset: %d, limit 100)", prefix, med, page*100)
+				} else {
+					log.Printf("%s Fetching torrents for anime %q (internal ID: %s) (offset: %d, limit 100)", prefix, med, internalID, page*100)
+				}
+				results, err := scr.FetchTorrentsByAnime(internalID, 100, page*100)
+				if err != nil {
+					log.Printf("%s Error fetching by anime %q (internal: %s): %v", prefix, med, internalID, err)
+					break
+				}
+				for _, t := range results {
+					targetedTorrents[strconv.Itoa(t.ID)] = t
+				}
+				if len(results) < 100 {
+					break
+				}
+				time.Sleep(300 * time.Millisecond)
 			}
-			for _, t := range results {
-				targetedTorrents[strconv.Itoa(t.ID)] = t
-			}
-			time.Sleep(300 * time.Millisecond)
 		}
 	}
 
 	// 2. Fetch Latest Comments
-	maxPages := 1
-	for _, monitorCfg := range monitorMap {
-		if monitorCfg.Page.Max > maxPages {
-			maxPages = monitorCfg.Page.Max
-		}
-	}
-	if maxPages <= 0 {
-		maxPages = 1
-	}
-
 	var allComments []scraper.TsukihimeComment
 	for page := 0; page < maxPages; page++ {
-		log.Printf("[TSUKIHIME] Fetching global comments feed (page %d)", page+1)
+		log.Printf("[TSUKIHIME] Fetching global comments feed (offset: %d, limit 100)", page*100)
 		resp, err := scr.FetchLatestComments(100, page*100)
 		if err != nil {
-			log.Printf("[TSUKIHIME] Error fetching latest comments (page %d): %v", page, err)
+			log.Printf("[TSUKIHIME] Error fetching latest comments (offset: %d): %v", page*100, err)
 			break
 		}
 		if len(resp.Comments) == 0 {

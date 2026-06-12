@@ -898,7 +898,7 @@ func (b *DiscordBot) handleSlashTest(s *discordgo.Session, i *discordgo.Interact
 		}
 	} else if service == "tsukihime" {
 		scr := scraper.NewTsukihimeScraper()
-		torrents, err := scr.SearchTorrents(query)
+		torrents, err := scr.SearchTorrents(query, 100, 0)
 		if err != nil {
 			b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ TsukiHime Search Error: %v", err))
 			return
