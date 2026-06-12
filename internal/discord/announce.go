@@ -132,26 +132,9 @@ func (b *DiscordBot) AnnounceATComment(channelID string, service string, torrent
 	}
 
 	var embedImage *discordgo.MessageEmbedImage
-	trimmedMsg := strings.TrimSpace(description)
-	if strings.HasPrefix(trimmedMsg, "http://") || strings.HasPrefix(trimmedMsg, "https://") {
-		if !strings.Contains(trimmedMsg, " ") && !strings.Contains(trimmedMsg, "\n") {
-			client := &http.Client{
-				Timeout: 5 * time.Second,
-			}
-			req, err := http.NewRequest("GET", trimmedMsg, nil)
-			if err == nil {
-				req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-				resp, err := client.Do(req)
-				if err == nil {
-					defer resp.Body.Close()
-					contentType := resp.Header.Get("Content-Type")
-					if strings.HasPrefix(contentType, "image/") {
-						embedImage = &discordgo.MessageEmbedImage{URL: trimmedMsg}
-						description = ""
-					}
-				}
-			}
-		}
+	if imgURL := extractImageURL(comment.Message); imgURL != "" {
+		embedImage = &discordgo.MessageEmbedImage{URL: imgURL}
+		description = ""
 	}
 
 	embedColor := 0x00073a
@@ -281,17 +264,36 @@ func (b *DiscordBot) AnnounceNekoBTComment(channelID string, torrentTitle string
 var nekoBTMentionRegex = regexp.MustCompile(`@([a-zA-Z0-9_-]+)`)
 
 var (
-	mdImageRegex = regexp.MustCompile(`(?i)^!\[.*?\]\((.*?)\)$`)
+	mdImageRegex = regexp.MustCompile(`(?i)^!\[.*?\]\((.+?)(?:\s+".*?")?\)$`)
 	bbImageRegex = regexp.MustCompile(`(?i)^\[img\](.*?)\[/img\]$`)
 )
 
 func extractImageURL(text string) string {
 	text = strings.TrimSpace(text)
 	if matches := mdImageRegex.FindStringSubmatch(text); len(matches) > 1 {
-		return matches[1]
+		return strings.TrimSpace(matches[1])
 	}
 	if matches := bbImageRegex.FindStringSubmatch(text); len(matches) > 1 {
-		return matches[1]
+		return strings.TrimSpace(matches[1])
+	}
+	if strings.HasPrefix(text, "http://") || strings.HasPrefix(text, "https://") {
+		if !strings.Contains(text, " ") && !strings.Contains(text, "\n") {
+			client := &http.Client{
+				Timeout: 5 * time.Second,
+			}
+			req, err := http.NewRequest("GET", text, nil)
+			if err == nil {
+				req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+				resp, err := client.Do(req)
+				if err == nil {
+					defer resp.Body.Close()
+					contentType := resp.Header.Get("Content-Type")
+					if strings.HasPrefix(contentType, "image/") {
+						return text
+					}
+				}
+			}
+		}
 	}
 	return ""
 }
@@ -314,6 +316,12 @@ func (b *DiscordBot) AnnounceAnirenaComment(channelID, torrentID, torrentTitle s
 		description = description[:4093] + "..."
 	}
 
+	var embedImage *discordgo.MessageEmbedImage
+	if imgURL := extractImageURL(comment.Body); imgURL != "" {
+		embedImage = &discordgo.MessageEmbedImage{URL: imgURL}
+		description = ""
+	}
+
 	authorName := comment.Username
 	if torrentUploader != "" && strings.EqualFold(comment.Username, torrentUploader) {
 		authorName = fmt.Sprintf("%s (Uploader)", comment.Username)
@@ -330,6 +338,7 @@ func (b *DiscordBot) AnnounceAnirenaComment(channelID, torrentID, torrentTitle s
 		URL:         commentURL,
 		Color:       embedColor,
 		Description: description,
+		Image:       embedImage,
 		Author: &discordgo.MessageEmbedAuthor{
 			Name: authorName,
 			URL:  authorURL,
