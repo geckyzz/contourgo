@@ -335,20 +335,35 @@ func (cfg *Config) LogConfigSummary() {
 		log.Printf("Service %q has %d monitor(s):", service, len(innerMap))
 		for key, m := range innerMap {
 			totalMonitors++
-			details := fmt.Sprintf("keywords=%v, uploaders=%v, sort=%q, order=%q, page_max=%d",
-				m.Keywords, m.Uploaders, m.Sort, m.Order, m.Page.Max)
-			if service == "nekobt" || service == "tsukihime" {
-				details = fmt.Sprintf(
-					"groups=%v, uploaders=%v, media=%v, keywords=%v, sort=%q, page_max=%d",
-					m.Groups,
-					m.Uploaders,
-					m.Media,
-					m.Keywords,
-					m.Sort,
-					m.Page.Max,
-				)
+			log.Printf("  - [%s]:", key)
+
+			if len(m.Keywords) > 0 {
+				log.Printf("      keywords: %v", m.Keywords)
 			}
-			log.Printf("  - [%s]: %s", key, details)
+			if len(m.Uploaders) > 0 {
+				log.Printf("      uploaders: %v", m.Uploaders)
+			}
+			if len(m.Groups) > 0 {
+				log.Printf("      groups: %v", m.Groups)
+			}
+			if len(m.Media) > 0 {
+				log.Printf("      media: %v", m.Media)
+			}
+			if m.Sort != "" {
+				log.Printf("      sort: %q", m.Sort)
+			}
+			if m.Order != "" {
+				log.Printf("      order: %q", m.Order)
+			}
+			if m.Page.Max > 0 {
+				log.Printf("      page_max: %d", m.Page.Max)
+			}
+
+			// If no specific filters were logged
+			if len(m.Keywords) == 0 && len(m.Uploaders) == 0 && len(m.Groups) == 0 &&
+				len(m.Media) == 0 && m.Sort == "" && m.Order == "" && m.Page.Max == 0 {
+				log.Printf("      (global/default filters)")
+			}
 		}
 	}
 	log.Printf("Total Monitors Configured: %d", totalMonitors)
