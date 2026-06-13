@@ -143,7 +143,9 @@ func LoadConfig(path string) (*Config, error) {
 	for svc := range cfg.Monitors {
 		for key := range cfg.Monitors[svc] {
 			m := cfg.Monitors[svc][key]
-			if (m.Discord.Embed.Author.URL == nil || *m.Discord.Embed.Author.URL == "") && m.Discord.Embed.Thumbnail != nil && *m.Discord.Embed.Thumbnail != "" {
+			if (m.Discord.Embed.Author.URL == nil || *m.Discord.Embed.Author.URL == "") &&
+				m.Discord.Embed.Thumbnail != nil &&
+				*m.Discord.Embed.Thumbnail != "" {
 				m.Discord.Embed.Author.URL = m.Discord.Embed.Thumbnail
 				cfg.Monitors[svc][key] = m
 			}
@@ -152,7 +154,7 @@ func LoadConfig(path string) (*Config, error) {
 
 	// Fallback to raw map for robust recovery if monitors are empty or error occurred
 	if err != nil || len(cfg.Monitors) == 0 {
-		var raw map[string]interface{}
+		var raw map[string]any
 		if err2 := toml.Unmarshal(data, &raw); err2 == nil {
 			// 1. Recover Discord if needed
 			if cfg.Discord.Token == "" {
@@ -169,12 +171,14 @@ func LoadConfig(path string) (*Config, error) {
 					mSource = raw["monitor"]
 				}
 				if mSource != nil {
-					if mData, ok := mSource.(map[string]interface{}); ok {
+					if mData, ok := mSource.(map[string]any); ok {
 						// Handle Underscore Aliases (backward compatibility)
-						if org, ok := mData["animetosho_org"]; ok && mData["animetosho_old"] == nil {
+						if org, ok := mData["animetosho_org"]; ok &&
+							mData["animetosho_old"] == nil {
 							mData["animetosho_old"] = org
 						}
-						if xyz, ok := mData["animetosho_xyz"]; ok && mData["animetosho_new"] == nil {
+						if xyz, ok := mData["animetosho_xyz"]; ok &&
+							mData["animetosho_new"] == nil {
 							mData["animetosho_new"] = xyz
 						}
 
@@ -186,42 +190,42 @@ func LoadConfig(path string) (*Config, error) {
 
 			// 3. Recover Config section if the initial parse failed
 			if err != nil && raw["config"] != nil {
-				if configData, ok := raw["config"].(map[string]interface{}); ok {
+				if configData, ok := raw["config"].(map[string]any); ok {
 					// monitor.by
-					if mon, ok := configData["monitor"].(map[string]interface{}); ok {
+					if mon, ok := configData["monitor"].(map[string]any); ok {
 						if by, ok := mon["by"].(string); ok {
 							cfg.Config.Monitor.By = by
 						}
 					}
 					// nyaa.proxy.url
-					if nyaa, ok := configData["nyaa"].(map[string]interface{}); ok {
-						if proxy, ok := nyaa["proxy"].(map[string]interface{}); ok {
+					if nyaa, ok := configData["nyaa"].(map[string]any); ok {
+						if proxy, ok := nyaa["proxy"].(map[string]any); ok {
 							if u, ok := proxy["url"].(string); ok {
 								cfg.Config.Nyaa.Proxy.URL = u
 							}
 						}
 					}
 					// animetosho
-					if at, ok := configData["animetosho"].(map[string]interface{}); ok {
+					if at, ok := configData["animetosho"].(map[string]any); ok {
 						// Alias .org -> .old, .xyz -> .new
-						if org, ok := at["org"].(map[string]interface{}); ok && at["old"] == nil {
+						if org, ok := at["org"].(map[string]any); ok && at["old"] == nil {
 							at["old"] = org
 						}
-						if xyz, ok := at["xyz"].(map[string]interface{}); ok && at["new"] == nil {
+						if xyz, ok := at["xyz"].(map[string]any); ok && at["new"] == nil {
 							at["new"] = xyz
 						}
 
 						// Handle page.max legacy
 						legacyMax := 5
-						if p, ok := at["page"].(map[string]interface{}); ok {
+						if p, ok := at["page"].(map[string]any); ok {
 							if m, ok := p["max"].(int64); ok {
 								legacyMax = int(m)
 							}
 						}
 
 						// Handle Old
-						if oldVal, ok := at["old"].(map[string]interface{}); ok {
-							if p, ok := oldVal["page"].(map[string]interface{}); ok {
+						if oldVal, ok := at["old"].(map[string]any); ok {
+							if p, ok := oldVal["page"].(map[string]any); ok {
 								if m, ok := p["max"].(int64); ok {
 									cfg.Config.Animetosho.Old.Page.Max = int(m)
 								}
@@ -231,8 +235,8 @@ func LoadConfig(path string) (*Config, error) {
 						}
 
 						// Handle New
-						if newVal, ok := at["new"].(map[string]interface{}); ok {
-							if p, ok := newVal["page"].(map[string]interface{}); ok {
+						if newVal, ok := at["new"].(map[string]any); ok {
+							if p, ok := newVal["page"].(map[string]any); ok {
 								if m, ok := p["max"].(int64); ok {
 									cfg.Config.Animetosho.New.Page.Max = int(m)
 								}
@@ -268,9 +272,9 @@ func ParseISO8601Duration(s string) time.Duration {
 	}
 
 	var duration time.Duration
-	tIdx := strings.Index(s, "T")
-	if tIdx != -1 {
-		timePart := s[tIdx+1:]
+	_, after, ok := strings.Cut(s, "T")
+	if ok {
+		timePart := after
 		var currentNum string
 		for i := 0; i < len(timePart); i++ {
 			char := timePart[i]
@@ -302,7 +306,11 @@ func ParseISO8601Duration(s string) time.Duration {
 
 func (cfg *Config) LogConfigSummary() {
 	log.Println("--- Configuration Summary ---")
-	log.Printf("Monitor Interval: %s (%v)", cfg.Config.Monitor.By, ParseISO8601Duration(cfg.Config.Monitor.By))
+	log.Printf(
+		"Monitor Interval: %s (%v)",
+		cfg.Config.Monitor.By,
+		ParseISO8601Duration(cfg.Config.Monitor.By),
+	)
 	log.Printf("Nyaa Proxy URL: %q", cfg.Config.Nyaa.Proxy.URL)
 	log.Printf("nekoBT API Key: %s", func() string {
 		if cfg.Config.Nekobt.API.Key != "" {
@@ -316,7 +324,11 @@ func (cfg *Config) LogConfigSummary() {
 		}
 		return "MISSING"
 	}())
-	log.Printf("AnimeTosho Max Pages: Old=%d, New=%d", cfg.Config.Animetosho.Old.Page.Max, cfg.Config.Animetosho.New.Page.Max)
+	log.Printf(
+		"AnimeTosho Max Pages: Old=%d, New=%d",
+		cfg.Config.Animetosho.Old.Page.Max,
+		cfg.Config.Animetosho.New.Page.Max,
+	)
 
 	totalMonitors := 0
 	for service, innerMap := range cfg.Monitors {
@@ -326,8 +338,15 @@ func (cfg *Config) LogConfigSummary() {
 			details := fmt.Sprintf("keywords=%v, uploaders=%v, sort=%q, order=%q, page_max=%d",
 				m.Keywords, m.Uploaders, m.Sort, m.Order, m.Page.Max)
 			if service == "nekobt" || service == "tsukihime" {
-				details = fmt.Sprintf("groups=%v, uploaders=%v, media=%v, keywords=%v, sort=%q, page_max=%d",
-					m.Groups, m.Uploaders, m.Media, m.Keywords, m.Sort, m.Page.Max)
+				details = fmt.Sprintf(
+					"groups=%v, uploaders=%v, media=%v, keywords=%v, sort=%q, page_max=%d",
+					m.Groups,
+					m.Uploaders,
+					m.Media,
+					m.Keywords,
+					m.Sort,
+					m.Page.Max,
+				)
 			}
 			log.Printf("  - [%s]: %s", key, details)
 		}
