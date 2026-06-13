@@ -18,7 +18,11 @@ import (
 func main() {
 	configPath := flag.String("config", "config.toml", "Path to config TOML file")
 	dbPath := flag.String("db", "bot.db", "Path to SQLite database file")
-	dumpComments := flag.Bool("dump-comments", false, "Initialize database without sending Discord notifications")
+	dumpComments := flag.Bool(
+		"dump-comments",
+		false,
+		"Initialize database without sending Discord notifications",
+	)
 	flag.Parse()
 
 	log.Println("Starting Contour Go bot...")

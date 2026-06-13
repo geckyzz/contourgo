@@ -25,7 +25,10 @@ func NewTsukihimeScraper() *TsukihimeScraper {
 }
 
 func (s *TsukihimeScraper) doRequest(req *http.Request) ([]byte, error) {
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+	req.Header.Set(
+		"User-Agent",
+		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+	)
 
 	resp, err := s.client.Do(req)
 	if err != nil {
@@ -41,23 +44,23 @@ func (s *TsukihimeScraper) doRequest(req *http.Request) ([]byte, error) {
 }
 
 type TsukihimeAuthor struct {
-	ID          interface{} `json:"id"`
-	Username    string      `json:"username"`
-	DisplayName string      `json:"display_name"`
-	AvatarHash  string      `json:"avatar_hash"`
+	ID          any    `json:"id"`
+	Username    string `json:"username"`
+	DisplayName string `json:"display_name"`
+	AvatarHash  string `json:"avatar_hash"`
 }
 
 type TsukihimeComment struct {
-	IDRaw       interface{}      `json:"id"`
-	UserIDRaw   interface{}      `json:"user_id"`
+	IDRaw       any              `json:"id"`
+	UserIDRaw   any              `json:"user_id"`
 	Content     string           `json:"content"`
 	Text        string           `json:"text"`
 	User        string           `json:"user"`
 	Author      *TsukihimeAuthor `json:"author"`
 	CreatedAt   string           `json:"created_at"`
-	TargetIDRaw interface{}      `json:"target_id"`
+	TargetIDRaw any              `json:"target_id"`
 	TargetType  string           `json:"target_type"`
-	ParentIDRaw interface{}      `json:"parent_id"`
+	ParentIDRaw any              `json:"parent_id"`
 	ParentText  string           `json:"-"`
 }
 
@@ -65,7 +68,7 @@ func (c *TsukihimeComment) GetUserID() string {
 	return GetStringOrInt(c.UserIDRaw)
 }
 
-func GetStringOrInt(val interface{}) string {
+func GetStringOrInt(val any) string {
 	if val == nil {
 		return ""
 	}
@@ -138,24 +141,25 @@ type TsukihimeTorrent struct {
 }
 
 type TsukihimeTorrentDetails struct {
-	ID    int                    `json:"id"`
-	Name  string                 `json:"name"`
-	Anime *TsukihimeTorrentAnime `json:"anime"`
-	Group *TsukihimeTorrentGroup `json:"group"`
+	ID        int                    `json:"id"`
+	Name      string                 `json:"name"`
+	AddedDate int64                  `json:"added_date"`
+	Anime     *TsukihimeTorrentAnime `json:"anime"`
+	Group     *TsukihimeTorrentGroup `json:"group"`
 }
 
 type TsukihimeTorrentAnime struct {
-	ID           interface{} `json:"id"`
-	Title        string      `json:"title"`
-	EnglishTitle string      `json:"english_title"`
-	MAL          interface{} `json:"mal"`
-	Anilist      interface{} `json:"anilist"`
-	AniDB        interface{} `json:"anidb"`
+	ID           any    `json:"id"`
+	Title        string `json:"title"`
+	EnglishTitle string `json:"english_title"`
+	MAL          any    `json:"mal"`
+	Anilist      any    `json:"anilist"`
+	AniDB        any    `json:"anidb"`
 }
 
 type TsukihimeTorrentGroup struct {
-	ID   interface{} `json:"id"`
-	Name string      `json:"name"`
+	ID   any    `json:"id"`
+	Name string `json:"name"`
 }
 
 func (s *TsukihimeScraper) FetchLatestComments(limit int, offset int) (*TsukihimeResponse, error) {
@@ -175,7 +179,11 @@ func (s *TsukihimeScraper) FetchLatestComments(limit int, offset int) (*Tsukihim
 	return &resp, nil
 }
 
-func (s *TsukihimeScraper) FetchTorrentsByAnime(animeID string, limit int, offset int) ([]TsukihimeTorrent, error) {
+func (s *TsukihimeScraper) FetchTorrentsByAnime(
+	animeID string,
+	limit int,
+	offset int,
+) ([]TsukihimeTorrent, error) {
 	u := fmt.Sprintf("%s/v1/animes/%s?limit=%d&offset=%d", s.baseURL, animeID, limit, offset)
 	req, _ := http.NewRequest("GET", u, nil)
 
@@ -194,7 +202,11 @@ func (s *TsukihimeScraper) FetchTorrentsByAnime(animeID string, limit int, offse
 	return resp.Results, nil
 }
 
-func (s *TsukihimeScraper) FetchTorrentsByGroup(groupID string, limit int, offset int) ([]TsukihimeTorrent, error) {
+func (s *TsukihimeScraper) FetchTorrentsByGroup(
+	groupID string,
+	limit int,
+	offset int,
+) ([]TsukihimeTorrent, error) {
 	u := fmt.Sprintf("%s/v1/groups/%s?limit=%d&offset=%d", s.baseURL, groupID, limit, offset)
 	req, _ := http.NewRequest("GET", u, nil)
 
@@ -223,7 +235,7 @@ func (s *TsukihimeScraper) ResolveAnimeID(service, id string) (string, error) {
 	}
 
 	var resp struct {
-		ID interface{} `json:"id"`
+		ID any `json:"id"`
 	}
 	if err := json.Unmarshal(body, &resp); err != nil {
 		return "", err
@@ -232,8 +244,18 @@ func (s *TsukihimeScraper) ResolveAnimeID(service, id string) (string, error) {
 	return GetStringOrInt(resp.ID), nil
 }
 
-func (s *TsukihimeScraper) SearchTorrents(query string, limit int, offset int) ([]TsukihimeTorrent, error) {
-	u := fmt.Sprintf("%s/v1/search/torrents?q=%s&limit=%d&offset=%d", s.baseURL, url.QueryEscape(query), limit, offset)
+func (s *TsukihimeScraper) SearchTorrents(
+	query string,
+	limit int,
+	offset int,
+) ([]TsukihimeTorrent, error) {
+	u := fmt.Sprintf(
+		"%s/v1/search/torrents?q=%s&limit=%d&offset=%d",
+		s.baseURL,
+		url.QueryEscape(query),
+		limit,
+		offset,
+	)
 	req, _ := http.NewRequest("GET", u, nil)
 
 	body, err := s.doRequest(req)
@@ -251,7 +273,10 @@ func (s *TsukihimeScraper) SearchTorrents(query string, limit int, offset int) (
 	return resp.Results, nil
 }
 
-func (s *TsukihimeScraper) FetchComments(torrentID string, title string) ([]TsukihimeComment, error) {
+func (s *TsukihimeScraper) FetchComments(
+	torrentID string,
+	title string,
+) ([]TsukihimeComment, error) {
 	resp, err := s.FetchLatestComments(100, 0)
 	if err != nil {
 		return nil, err

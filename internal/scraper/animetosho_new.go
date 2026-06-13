@@ -25,7 +25,11 @@ func NewAnimeToshoNewScraper() *AnimeToshoNewScraper {
 	}
 }
 
-func (s *AnimeToshoNewScraper) ScrapeComments(page int, q string, feedback bool) ([]ATComment, bool, error) {
+func (s *AnimeToshoNewScraper) ScrapeComments(
+	page int,
+	q string,
+	feedback bool,
+) ([]ATComment, bool, error) {
 	qVals := url.Values{}
 	if page > 1 {
 		qVals.Set("page", strconv.Itoa(page))
@@ -44,7 +48,10 @@ func (s *AnimeToshoNewScraper) ScrapeComments(page int, q string, feedback bool)
 	if err != nil {
 		return nil, false, err
 	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+	req.Header.Set(
+		"User-Agent",
+		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+	)
 
 	resp, err := s.client.Do(req)
 	if err != nil {
@@ -129,8 +136,8 @@ func (s *AnimeToshoNewScraper) ScrapeComments(page int, q string, feedback bool)
 
 		userText := commentUser.Text()
 		var timestamp int64 = time.Now().Unix()
-		if idx := strings.Index(userText, "posted on "); idx != -1 {
-			datePart := strings.TrimSpace(userText[idx+len("posted on "):])
+		if _, after, ok := strings.Cut(userText, "posted on "); ok {
+			datePart := strings.TrimSpace(after)
 			datePart = strings.TrimSuffix(datePart, " UTC")
 			datePart = strings.TrimSpace(datePart)
 			timestamp = parseATTime(datePart)

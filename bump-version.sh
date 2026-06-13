@@ -43,13 +43,15 @@ echo "Bumping to: $NEW_TAG"
 BOT_GO_PATH="internal/discord/bot.go"
 
 if [ -f "$BOT_GO_PATH" ]; then
-  # Use sed to update Version = "X.Y.Z"
+  # Use sed to update Version = "X.Y.Z" while preserving existing whitespace
   if [[ "$OSTYPE" == "darwin"* ]]; then
-    sed -i '' -E "s/Version[[:space:]]*=[[:space:]]*\"[0-9]+\.[0-9]+\.[0-9]+\"/Version   = \"$NEW_VERSION\"/g" "$BOT_GO_PATH"
+    # macOS sed uses \1 for backreferences
+    sed -i '' -E "s/(Version[[:space:]]*)=[[:space:]]*\"[0-9]+\.[0-9]+\.[0-9]+\"/\1= \"$NEW_VERSION\"/g" "$BOT_GO_PATH"
   else
-    sed -i -E "s/Version[[:space:]]*=[[:space:]]*\"[0-9]+\.[0-9]+\.[0-9]+\"/Version   = \"$NEW_VERSION\"/g" "$BOT_GO_PATH"
+    # GNU sed
+    sed -i -E "s/(Version[[:space:]]*)=[[:space:]]*\"[0-9]+\.[0-9]+\.[0-9]+\"/\1= \"$NEW_VERSION\"/g" "$BOT_GO_PATH"
   fi
-  echo "Updated version string in $BOT_GO_PATH"
+  echo "Updated version string in $BOT_GO_PATH (preserved alignment)"
 else
   echo "Warning: $BOT_GO_PATH not found, skipping source version update."
 fi

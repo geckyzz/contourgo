@@ -133,9 +133,9 @@ type NekoBTTorrent struct {
 }
 
 type NekoBTResponse struct {
-	Error   bool        `json:"error"`
-	Message string      `json:"message"`
-	Data    interface{} `json:"data"`
+	Error   bool   `json:"error"`
+	Message string `json:"message"`
+	Data    any    `json:"data"`
 }
 
 type NekoBTSearchResult struct {

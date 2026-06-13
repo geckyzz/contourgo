@@ -19,9 +19,11 @@ func TestParseATTime(t *testing.T) {
 			expected: time.Date(now.Year(), now.Month(), now.Day(), 18, 38, 0, 0, time.UTC).Unix(),
 		},
 		{
-			name:     "Yesterday format",
-			input:    "Yesterday 16:35",
-			expected: time.Date(now.Year(), now.Month(), now.Day(), 16, 35, 0, 0, time.UTC).AddDate(0, 0, -1).Unix(),
+			name:  "Yesterday format",
+			input: "Yesterday 16:35",
+			expected: time.Date(now.Year(), now.Month(), now.Day(), 16, 35, 0, 0, time.UTC).
+				AddDate(0, 0, -1).
+				Unix(),
 		},
 		{
 			name:     "Absolute date format",
@@ -44,7 +46,12 @@ func TestParseATTime(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := parseATTime(tt.input)
 			if got != tt.expected {
-				t.Errorf("parseATTime(%q) = %v, want %v", tt.input, time.Unix(got, 0).UTC(), time.Unix(tt.expected, 0).UTC())
+				t.Errorf(
+					"parseATTime(%q) = %v, want %v",
+					tt.input,
+					time.Unix(got, 0).UTC(),
+					time.Unix(tt.expected, 0).UTC(),
+				)
 			}
 		})
 	}

@@ -34,6 +34,8 @@ func (s *AnimeToshoOldScraper) ScrapeComments(page int, feedback bool) ([]ATComm
 		qVals.Set("feedback", "1")
 	} else {
 		qVals.Add("filter_types[]", "0")
+		qVals.Add("filter_types[]", "1")
+		qVals.Add("filter_types[]", "2")
 	}
 
 	u := fmt.Sprintf("%s/comments?%s", s.baseURL, qVals.Encode())
@@ -41,7 +43,10 @@ func (s *AnimeToshoOldScraper) ScrapeComments(page int, feedback bool) ([]ATComm
 	if err != nil {
 		return nil, false, err
 	}
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+	req.Header.Set(
+		"User-Agent",
+		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+	)
 
 	resp, err := s.client.Do(req)
 	if err != nil {
@@ -170,7 +175,8 @@ func (s *AnimeToshoOldScraper) ScrapeComments(page int, feedback bool) ([]ATComm
 	nextPageStr := strconv.Itoa(page + 1)
 	doc.Find("div.pagination a").Each(func(i int, sel *goquery.Selection) {
 		title, _ := sel.Attr("title")
-		if strings.Contains(title, "Go to page "+nextPageStr) || strings.TrimSpace(sel.Text()) == nextPageStr {
+		if strings.Contains(title, "Go to page "+nextPageStr) ||
+			strings.TrimSpace(sel.Text()) == nextPageStr {
 			hasNext = true
 		}
 	})

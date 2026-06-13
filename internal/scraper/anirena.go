@@ -147,7 +147,14 @@ func (s *AnirenaScraper) updateTokenFromHeader(resp *http.Header) {
 	}
 }
 
-func (s *AnirenaScraper) FetchTorrents(uploader string, group string, keyword string, page int, sort string, order string) ([]AnirenaTorrent, int, error) {
+func (s *AnirenaScraper) FetchTorrents(
+	uploader string,
+	group string,
+	keyword string,
+	page int,
+	sort string,
+	order string,
+) ([]AnirenaTorrent, int, error) {
 	token, err := s.GetToken()
 	if err != nil {
 		return nil, 0, err
@@ -172,7 +179,7 @@ func (s *AnirenaScraper) FetchTorrents(uploader string, group string, keyword st
 		}
 	}
 
-	searchBody := map[string]interface{}{
+	searchBody := map[string]any{
 		"q":        query,
 		"page":     page,
 		"per_page": 25,
@@ -226,7 +233,12 @@ func (s *AnirenaScraper) FetchComments(torrentID string) ([]AnirenaComment, erro
 	var allComments []AnirenaComment
 	page := 1
 	for {
-		endpoint := fmt.Sprintf("%s/api/v1/torrents/%s/comments?page=%d", s.baseURL, url.PathEscape(torrentID), page)
+		endpoint := fmt.Sprintf(
+			"%s/api/v1/torrents/%s/comments?page=%d",
+			s.baseURL,
+			url.PathEscape(torrentID),
+			page,
+		)
 		req, err := http.NewRequest("GET", endpoint, nil)
 		if err != nil {
 			return nil, err

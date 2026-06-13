@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"maps"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -62,9 +63,7 @@ func (s *NekoBTScraper) doRequest(req *http.Request) ([]byte, error) {
 
 			// Re-create request for retry since body might be closed or state changed
 			newReq, _ := http.NewRequest(req.Method, req.URL.String(), nil)
-			for k, v := range req.Header {
-				newReq.Header[k] = v
-			}
+			maps.Copy(newReq.Header, req.Header)
 			if s.apiKey != "" {
 				newReq.AddCookie(&http.Cookie{Name: "ssid", Value: s.apiKey})
 			}
@@ -168,7 +167,13 @@ func (s *NekoBTScraper) FetchComments(torrentID string, title string) ([]NekoBTC
 	return s.flattenComments(comments, "", torrentID, title, uploaderID, contributorIDs), nil
 }
 
-func (s *NekoBTScraper) flattenComments(tree []NekoBTComment, parentText string, torrentID, title string, uploaderID string, contributorIDs []string) []NekoBTComment {
+func (s *NekoBTScraper) flattenComments(
+	tree []NekoBTComment,
+	parentText string,
+	torrentID, title string,
+	uploaderID string,
+	contributorIDs []string,
+) []NekoBTComment {
 	var flat []NekoBTComment
 	for _, c := range tree {
 		c.ParentText = parentText
@@ -183,7 +188,16 @@ func (s *NekoBTScraper) flattenComments(tree []NekoBTComment, parentText string,
 
 		flat = append(flat, c)
 		if len(c.Children) > 0 {
-			flat = append(flat, s.flattenComments(c.Children, c.Text, torrentID, title, uploaderID, contributorIDs)...)
+			flat = append(
+				flat,
+				s.flattenComments(
+					c.Children,
+					c.Text,
+					torrentID,
+					title,
+					uploaderID,
+					contributorIDs,
+				)...)
 		}
 	}
 	return flat
