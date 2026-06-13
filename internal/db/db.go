@@ -203,7 +203,7 @@ func (db *DB) GetPendingAnnouncements() ([]QueuedAnnouncement, error) {
 		SELECT 
 			q.id, q.service, q.channel_id, q.torrent_id, q.comment_id, COALESCE(q.author_icon_url, ''), q.show_comment_id, q.resolve_image, 
 			COALESCE(q.retry_count, 0), COALESCE(q.last_error, ''), q.created_at,
-			COALESCE(t.title, ''), COALESCE(t.uploaded_at, 0), COALESCE(t.uploader, ''), COALESCE(t.comment_count, 0), COALESCE(t.last_scraped_at, '1970-01-01'),
+			COALESCE(t.title, ''), COALESCE(t.uploaded_at, 0), COALESCE(t.uploader, ''), COALESCE(t.comment_count, 0), t.last_scraped_at,
 			COALESCE(c.username, ''), COALESCE(c.message, ''), COALESCE(c.timestamp, 0), COALESCE(c.position, 0), 
 			COALESCE(c.user_role, ''), COALESCE(c.avatar_url, ''), COALESCE(c.parent_id, ''), COALESCE(c.parent_message, '')
 		FROM announcement_queue q
@@ -220,13 +220,40 @@ func (db *DB) GetPendingAnnouncements() ([]QueuedAnnouncement, error) {
 	var announcements []QueuedAnnouncement
 	for rows.Next() {
 		var a QueuedAnnouncement
+		var lastScrapedAt sql.NullTime
 		if err := rows.Scan(
-			&a.ID, &a.Service, &a.ChannelID, &a.TorrentID, &a.CommentID, &a.AuthorIconURL, &a.ShowCommentID, &a.ResolveImage, &a.RetryCount, &a.LastError, &a.CreatedAt,
-			&a.Torrent.Title, &a.Torrent.UploadedAt, &a.Torrent.Uploader, &a.Torrent.CommentCount, &a.Torrent.LastScrapedAt,
-			&a.Comment.Username, &a.Comment.Message, &a.Comment.Timestamp, &a.Comment.Position, &a.Comment.UserRole, &a.Comment.AvatarURL, &a.Comment.ParentID, &a.Comment.ParentMessage,
+			&a.ID,
+			&a.Service,
+			&a.ChannelID,
+			&a.TorrentID,
+			&a.CommentID,
+			&a.AuthorIconURL,
+			&a.ShowCommentID,
+			&a.ResolveImage,
+			&a.RetryCount,
+			&a.LastError,
+			&a.CreatedAt,
+			&a.Torrent.Title,
+			&a.Torrent.UploadedAt,
+			&a.Torrent.Uploader,
+			&a.Torrent.CommentCount,
+			&lastScrapedAt,
+			&a.Comment.Username,
+			&a.Comment.Message,
+			&a.Comment.Timestamp,
+			&a.Comment.Position,
+			&a.Comment.UserRole,
+			&a.Comment.AvatarURL,
+			&a.Comment.ParentID,
+			&a.Comment.ParentMessage,
 		); err != nil {
 			return nil, err
 		}
+
+		if lastScrapedAt.Valid {
+			a.Torrent.LastScrapedAt = lastScrapedAt.Time
+		}
+
 		a.Torrent.Service = a.Service
 		a.Torrent.TorrentID = a.TorrentID
 		a.Comment.Service = a.Service
