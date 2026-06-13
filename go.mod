@@ -8,6 +8,7 @@ require (
 	github.com/fernet/fernet-go v0.0.0-20240119011108-303da6aec611
 	github.com/mattn/go-isatty v0.0.21
 	github.com/pelletier/go-toml/v2 v2.3.1
+	github.com/pressly/goose/v3 v3.27.1
 	modernc.org/sqlite v1.52.0
 )
 
@@ -18,7 +19,6 @@ require (
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/mfridman/interpolate v0.0.2 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
-	github.com/pressly/goose/v3 v3.27.1 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/sethvargo/go-retry v0.3.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
