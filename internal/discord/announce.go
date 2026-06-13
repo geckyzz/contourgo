@@ -10,16 +10,69 @@ import (
 	"time"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/geckyzz/contourgo/internal/scraper"
+	"github.com/geckyzz/contourgo/internal/db"
 )
 
-func (b *DiscordBot) AnnounceNyaaComment(channelID string, service, torrentID, torrentTitle string, comment scraper.NyaaComment, authorIconURL string, showCommentID bool, resolveUserContentImage bool) error {
-	targetChannel := b.AnnounceChannel
-	if channelID != "" {
-		targetChannel = channelID
+func (b *DiscordBot) enqueueAnnouncement(
+	service, channelID, torrentID, commentID, authorIconURL string,
+	showCommentID, resolveImage bool,
+) error {
+	if channelID == "" {
+		channelID = b.AnnounceChannel
 	}
+	return b.DB.EnqueueAnnouncement(
+		service,
+		channelID,
+		torrentID,
+		commentID,
+		authorIconURL,
+		showCommentID,
+		resolveImage,
+	)
+}
 
-	var commentURL, userAvatarURL, authorName, authorURL string
+func trimDescription(s string) string {
+	if len(s) > 4096 {
+		return s[:4093] + "..."
+	}
+	return s
+}
+
+func (b *DiscordBot) setEmbedTimestamp(embed *discordgo.MessageEmbed, timestamp int64) {
+	if timestamp > 0 {
+		embed.Timestamp = time.Unix(timestamp, 0).UTC().Format(time.RFC3339)
+	}
+}
+
+func (b *DiscordBot) setEmbedThumbnail(
+	embed *discordgo.MessageEmbed,
+	avatarURL, defaultSuffix string,
+) {
+	if avatarURL != "" && !strings.HasSuffix(avatarURL, defaultSuffix) {
+		embed.Thumbnail = &discordgo.MessageEmbedThumbnail{
+			URL: avatarURL,
+		}
+	}
+}
+
+func (b *DiscordBot) resolveEmbedImage(embed *discordgo.MessageEmbed, message, siteBase string) {
+	if imgURL := extractImageURL(message); imgURL != "" {
+		if strings.HasPrefix(imgURL, "/") && siteBase != "" {
+			imgURL = "https://" + siteBase + imgURL
+		}
+		embed.Image = &discordgo.MessageEmbedImage{URL: imgURL}
+		embed.Description = ""
+	}
+}
+
+func (b *DiscordBot) BuildNyaaEmbed(
+	service, authorIconURL string,
+	torrent db.Torrent,
+	comment db.Comment,
+	showCommentID bool,
+	resolveUserContentImage bool,
+) *discordgo.MessageEmbed {
+	var userAvatarURL, authorName, authorURL string
 	var embedColor int
 
 	siteBase := "nyaa.si"
@@ -27,10 +80,15 @@ func (b *DiscordBot) AnnounceNyaaComment(channelID string, service, torrentID, t
 		siteBase = "sukebei.nyaa.si"
 	}
 
-	commentURL = fmt.Sprintf("https://%s/view/%s#com-%d", siteBase, torrentID, comment.Pos)
+	commentURL := fmt.Sprintf(
+		"https://%s/view/%s#com-%d",
+		siteBase,
+		torrent.TorrentID,
+		comment.Position,
+	)
 
-	if comment.Avatar != "" {
-		userAvatarURL = comment.Avatar
+	if comment.AvatarURL != "" {
+		userAvatarURL = comment.AvatarURL
 		if strings.HasPrefix(userAvatarURL, "/static/") {
 			userAvatarURL = "https://" + siteBase + userAvatarURL
 		}
@@ -39,8 +97,8 @@ func (b *DiscordBot) AnnounceNyaaComment(channelID string, service, torrentID, t
 	}
 
 	authorName = comment.Username
-	if comment.Role != "" {
-		authorName = fmt.Sprintf("%s (%s)", comment.Username, comment.Role)
+	if comment.UserRole != "" {
+		authorName = fmt.Sprintf("%s (%s)", comment.Username, comment.UserRole)
 	}
 
 	authorURL = fmt.Sprintf("https://%s/user/%s", siteBase, urlPathEscape(comment.Username))
@@ -51,21 +109,14 @@ func (b *DiscordBot) AnnounceNyaaComment(channelID string, service, torrentID, t
 		embedColor = 0x0085ff
 	}
 
-	description := comment.Text
-	if len(description) > 4096 {
-		description = description[:4093] + "..."
-	}
-
-	torrentURL := fmt.Sprintf("https://%s/view/%s#com-%d", siteBase, torrentID, comment.Pos)
-
 	embed := &discordgo.MessageEmbed{
 		Title:       trimField(authorName),
 		URL:         authorURL,
 		Color:       embedColor,
-		Description: description,
+		Description: trimDescription(comment.Message),
 		Author: &discordgo.MessageEmbedAuthor{
-			Name:    trimField(torrentTitle),
-			URL:     torrentURL,
+			Name:    trimField(torrent.Title),
+			URL:     commentURL,
 			IconURL: authorIconURL,
 		},
 		Footer: &discordgo.MessageEmbedFooter{
@@ -75,69 +126,87 @@ func (b *DiscordBot) AnnounceNyaaComment(channelID string, service, torrentID, t
 
 	if showCommentID {
 		embed.Fields = []*discordgo.MessageEmbedField{
-			{Name: "Comment ID", Value: fmt.Sprintf("[#%d](%s)", comment.Pos, commentURL), Inline: true},
+			{
+				Name:   "Comment ID",
+				Value:  fmt.Sprintf("[#%d](%s)", comment.Position, commentURL),
+				Inline: true,
+			},
 		}
 	}
 
 	if resolveUserContentImage {
-		if imgURL := extractImageURL(comment.Text); imgURL != "" {
-			if strings.HasPrefix(imgURL, "/") {
-				imgURL = "https://" + siteBase + imgURL
-			}
-			embed.Image = &discordgo.MessageEmbedImage{URL: imgURL}
-			embed.Description = ""
-		}
+		b.resolveEmbedImage(embed, comment.Message, siteBase)
 	}
 
-	if userAvatarURL != "" && !strings.HasSuffix(userAvatarURL, "default.png") {
-		embed.Thumbnail = &discordgo.MessageEmbedThumbnail{
-			URL: userAvatarURL,
-		}
+	b.setEmbedThumbnail(embed, userAvatarURL, "default.png")
+	b.setEmbedTimestamp(embed, comment.Timestamp)
+
+	return embed
+}
+
+func (b *DiscordBot) AnnounceNyaaComment(
+	channelID string,
+	service string,
+	torrent db.Torrent,
+	comment db.Comment,
+	authorIconURL string,
+	showCommentID bool,
+	resolveUserContentImage bool,
+) error {
+	if channelID == "" {
+		return b.enqueueAnnouncement(
+			service,
+			"",
+			torrent.TorrentID,
+			comment.CommentID,
+			authorIconURL,
+			showCommentID,
+			resolveUserContentImage,
+		)
 	}
 
-	if comment.Timestamp != "" {
-		t, err := time.Parse(time.RFC3339, ensureUTC(comment.Timestamp))
-		if err == nil {
-			embed.Timestamp = t.Format(time.RFC3339)
-		}
-	}
+	embed := b.BuildNyaaEmbed(
+		service,
+		authorIconURL,
+		torrent,
+		comment,
+		showCommentID,
+		resolveUserContentImage,
+	)
 
-	log.Printf("[POST] Sending Nyaa/Sukebei Announcement embed to channel %s for torrent '%s'", targetChannel, torrentTitle)
-	_, err := b.Session.ChannelMessageSendEmbed(targetChannel, embed)
+	log.Printf(
+		"[POST] Sending Nyaa/Sukebei Announcement embed to channel %s for torrent '%s'",
+		channelID,
+		torrent.Title,
+	)
+	_, err := b.Session.ChannelMessageSendEmbed(channelID, embed)
 	return err
 }
 
-func (b *DiscordBot) AnnounceATComment(channelID string, service string, torrentID, torrentTitle string, comment scraper.ATComment, authorIconURL string, showCommentID bool, resolveUserContentImage bool) error {
-	targetChannel := b.AnnounceChannel
-	if channelID != "" {
-		targetChannel = channelID
-	}
-
+func (b *DiscordBot) BuildATEmbed(
+	service string,
+	torrent db.Torrent,
+	comment db.Comment,
+	showCommentID bool,
+	resolveUserContentImage bool,
+) *discordgo.MessageEmbed {
 	siteBase := "animetosho.org"
 	if strings.HasPrefix(service, "animetosho_new") {
 		siteBase = "animetosho.xyz"
 	}
 
 	var torrentURL, commentURL string
-	if strings.HasPrefix(torrentID, "feedback") {
+	if strings.HasPrefix(torrent.TorrentID, "feedback") {
 		torrentURL = fmt.Sprintf("https://%s/feedback", siteBase)
-		commentURL = fmt.Sprintf("https://%s/%s#comment%s", siteBase, torrentID, comment.ID)
+		commentURL = fmt.Sprintf(
+			"https://%s/%s#comment%s",
+			siteBase,
+			torrent.TorrentID,
+			comment.CommentID,
+		)
 	} else {
-		torrentURL = fmt.Sprintf("https://%s/view/%s", siteBase, torrentID)
-		commentURL = fmt.Sprintf("https://%s/view/%s#comment%s", siteBase, torrentID, comment.ID)
-	}
-
-	description := comment.Message
-	if len(description) > 4096 {
-		description = description[:4093] + "..."
-	}
-
-	var embedImage *discordgo.MessageEmbedImage
-	if resolveUserContentImage {
-		if imgURL := extractImageURL(comment.Message); imgURL != "" {
-			embedImage = &discordgo.MessageEmbedImage{URL: imgURL}
-			description = ""
-		}
+		torrentURL = fmt.Sprintf("https://%s/view/%s", siteBase, torrent.TorrentID)
+		commentURL = fmt.Sprintf("https://%s/view/%s#comment%s", siteBase, torrent.TorrentID, comment.CommentID)
 	}
 
 	embedColor := 0x52d345
@@ -149,10 +218,9 @@ func (b *DiscordBot) AnnounceATComment(channelID string, service string, torrent
 		Title:       trimField(comment.Username),
 		URL:         commentURL,
 		Color:       embedColor,
-		Description: description,
-		Image:       embedImage,
+		Description: trimDescription(comment.Message),
 		Author: &discordgo.MessageEmbedAuthor{
-			Name: trimField(torrentTitle),
+			Name: trimField(torrent.Title),
 			URL:  torrentURL,
 		},
 		Footer: &discordgo.MessageEmbedFooter{
@@ -162,60 +230,75 @@ func (b *DiscordBot) AnnounceATComment(channelID string, service string, torrent
 
 	if showCommentID {
 		embed.Fields = []*discordgo.MessageEmbedField{
-			{Name: "Comment ID", Value: fmt.Sprintf("[%s](%s)", comment.ID, commentURL), Inline: true},
+			{
+				Name:   "Comment ID",
+				Value:  fmt.Sprintf("[%s](%s)", comment.CommentID, commentURL),
+				Inline: true,
+			},
 		}
 	}
 
-	if comment.Timestamp > 0 {
-		embed.Timestamp = time.Unix(comment.Timestamp, 0).UTC().Format(time.RFC3339)
+	if resolveUserContentImage {
+		b.resolveEmbedImage(embed, comment.Message, "")
 	}
 
-	log.Printf("[POST] Sending AnimeTosho Announcement embed to channel %s for torrent '%s'", targetChannel, torrentTitle)
-	_, err := b.Session.ChannelMessageSendEmbed(targetChannel, embed)
+	b.setEmbedTimestamp(embed, comment.Timestamp)
+
+	return embed
+}
+
+func (b *DiscordBot) AnnounceATComment(
+	channelID string,
+	service string,
+	torrent db.Torrent,
+	comment db.Comment,
+	authorIconURL string,
+	showCommentID bool,
+	resolveUserContentImage bool,
+) error {
+	if channelID == "" {
+		return b.enqueueAnnouncement(
+			service,
+			"",
+			torrent.TorrentID,
+			comment.CommentID,
+			authorIconURL,
+			showCommentID,
+			resolveUserContentImage,
+		)
+	}
+
+	embed := b.BuildATEmbed(service, torrent, comment, showCommentID, resolveUserContentImage)
+
+	log.Printf(
+		"[POST] Sending AnimeTosho Announcement embed to channel %s for torrent '%s'",
+		channelID,
+		torrent.Title,
+	)
+	_, err := b.Session.ChannelMessageSendEmbed(channelID, embed)
 	return err
 }
 
-func (b *DiscordBot) AnnounceNekoBTComment(channelID string, torrentTitle string, comment scraper.NekoBTComment, authorIconURL string, showCommentID bool, resolveUserContentImage bool) error {
-	targetChannel := b.AnnounceChannel
-	if channelID != "" {
-		targetChannel = channelID
-	}
+func (b *DiscordBot) BuildNekoBTEmbed(
+	torrent db.Torrent,
+	comment db.Comment,
+	authorIconURL string,
+	showCommentID bool,
+	resolveUserContentImage bool,
+	parentText string,
+) *discordgo.MessageEmbed {
+	torrentURL := fmt.Sprintf("https://nekobt.to/view/%s", torrent.TorrentID)
 
-	torrentURL := fmt.Sprintf("https://nekobt.to/view/%s", comment.TorrentID)
-	userURL := fmt.Sprintf("https://nekobt.to/users/%s", comment.UserID)
-
-	pfpHash := "null"
-	if comment.PfpHash != nil && *comment.PfpHash != "" {
-		pfpHash = *comment.PfpHash
-	}
-	userAvatarURL := fmt.Sprintf("https://nekobt.to/cdn/pfp/%s", pfpHash)
-
-	displayName := comment.DisplayName
-	if comment.UserID == comment.UploaderID {
-		displayName = fmt.Sprintf("%s (Uploader)", displayName)
-	} else {
-		for _, cid := range comment.ContributorIDs {
-			if comment.UserID == cid {
-				displayName = fmt.Sprintf("%s (Contributor)", displayName)
-				break
-			}
-		}
-	}
-
-	description := resolveNekoBTMentions(comment.Text)
-	if len(description) > 4096 {
-		description = description[:4093] + "..."
-	}
+	description := resolveNekoBTMentions(comment.Message)
 
 	embed := &discordgo.MessageEmbed{
-		Title: trimField(displayName),
-		URL:   userURL,
+		Title: trimField(comment.Username),
 		Author: &discordgo.MessageEmbedAuthor{
-			Name:    trimField(torrentTitle),
+			Name:    trimField(torrent.Title),
 			URL:     torrentURL,
 			IconURL: authorIconURL,
 		},
-		Description: description,
+		Description: trimDescription(description),
 		Color:       0x8c4fff, // nekoBT Purple
 		Footer: &discordgo.MessageEmbedFooter{
 			Text: "nekoBT Comments",
@@ -225,82 +308,98 @@ func (b *DiscordBot) AnnounceNekoBTComment(channelID string, torrentTitle string
 	if showCommentID {
 		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
 			Name:  "Comment ID",
-			Value: fmt.Sprintf("`%s`", comment.ID),
+			Value: fmt.Sprintf("`%s`", comment.CommentID),
+		})
+	}
+
+	if comment.ParentID != "" && parentText != "" {
+		pText := resolveNekoBTMentions(parentText)
+		if len(pText) > 1000 {
+			pText = pText[:997] + "..."
+		}
+		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
+			Name:  "↪️ Replying to",
+			Value: pText,
 		})
 	}
 
 	if resolveUserContentImage {
-		if imgURL := extractImageURL(comment.Text); imgURL != "" {
-			if strings.HasPrefix(imgURL, "/") {
-				imgURL = "https://nekobt.to" + imgURL
-			}
-			embed.Image = &discordgo.MessageEmbedImage{URL: imgURL}
-			embed.Description = ""
+		b.resolveEmbedImage(embed, comment.Message, "nekobt.to")
+	}
+
+	b.setEmbedTimestamp(embed, comment.Timestamp)
+	b.setEmbedThumbnail(embed, comment.AvatarURL, "/null")
+
+	return embed
+}
+
+func (b *DiscordBot) AnnounceNekoBTComment(
+	channelID string,
+	torrent db.Torrent,
+	comment db.Comment,
+	authorIconURL string,
+	showCommentID bool,
+	resolveUserContentImage bool,
+) error {
+	if channelID == "" {
+		return b.enqueueAnnouncement(
+			"nekobt",
+			"",
+			torrent.TorrentID,
+			comment.CommentID,
+			authorIconURL,
+			showCommentID,
+			resolveUserContentImage,
+		)
+	}
+
+	parentText := comment.ParentMessage
+	if parentText == "" && comment.ParentID != "" {
+		if parent, ok := b.DB.GetComment("nekobt", torrent.TorrentID, comment.ParentID); ok {
+			parentText = parent.Message
 		}
 	}
 
-	if comment.CreatedAt > 0 {
-		embed.Timestamp = time.Unix(comment.CreatedAt/1000, (comment.CreatedAt%1000)*1000000).UTC().Format(time.RFC3339)
-	}
+	embed := b.BuildNekoBTEmbed(
+		torrent,
+		comment,
+		authorIconURL,
+		showCommentID,
+		resolveUserContentImage,
+		parentText,
+	)
 
-	if userAvatarURL != "" && !strings.HasSuffix(userAvatarURL, "/null") {
-		embed.Thumbnail = &discordgo.MessageEmbedThumbnail{
-			URL: userAvatarURL,
-		}
-	}
-
-	// Add parent comment field if it's a reply
-	if comment.ReplyingTo != nil && *comment.ReplyingTo != "" && comment.ParentText != "" {
-		parentText := resolveNekoBTMentions(comment.ParentText)
-		if len(parentText) > 1000 {
-			parentText = parentText[:997] + "..."
-		}
-		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
-			Name:  "↪️ Replying to",
-			Value: parentText,
-		})
-	}
-
-	log.Printf("[POST] Announcing nekoBT comment on torrent '%s' to channel %s", torrentTitle, targetChannel)
-	_, err := b.Session.ChannelMessageSendEmbed(targetChannel, embed)
+	log.Printf(
+		"[POST] Announcing nekoBT comment on torrent '%s' to channel %s",
+		torrent.Title,
+		channelID,
+	)
+	_, err := b.Session.ChannelMessageSendEmbed(channelID, embed)
 	return err
 }
 
-func (b *DiscordBot) AnnounceTsukihimeComment(channelID string, torrentTitle string, comment scraper.TsukihimeComment, parentText string, authorIconURL string, showCommentID bool, resolveUserContentImage bool) error {
-	targetChannel := b.AnnounceChannel
-	if channelID != "" {
-		targetChannel = channelID
-	}
-
+func (b *DiscordBot) BuildTsukihimeEmbed(
+	torrent db.Torrent,
+	comment db.Comment,
+	authorIconURL string,
+	showCommentID bool,
+	resolveUserContentImage bool,
+	parentText string,
+) *discordgo.MessageEmbed {
 	var torrentURL string
-	if comment.TargetType == "feedback" {
+	if torrent.TorrentID == "feedback" {
 		torrentURL = "https://tsukihime.org/feedback"
 	} else {
-		torrentURL = fmt.Sprintf("https://tsukihime.org/view/%s", comment.GetTargetID())
-	}
-	// userURL := fmt.Sprintf("https://tsukihime.org/u/%s", comment.GetUsername())
-
-	var userAvatarURL string
-	if comment.Author != nil && comment.Author.AvatarHash != "" {
-		userAvatarURL = fmt.Sprintf("https://tsukihime.org/cdn/pfp/%s", comment.Author.AvatarHash)
-	} else {
-		userAvatarURL = "https://tsukihime.org/static/img/avatar/default.png"
-	}
-
-	displayName := comment.GetDisplayName()
-	description := comment.GetText() // Removed resolveTsukihimeMentions
-	if len(description) > 4096 {
-		description = description[:4093] + "..."
+		torrentURL = fmt.Sprintf("https://tsukihime.org/view/%s", torrent.TorrentID)
 	}
 
 	embed := &discordgo.MessageEmbed{
-		Title: trimField(displayName),
-		// URL:   userURL, // Removed as there are no user pages
+		Title: trimField(comment.Username),
 		Author: &discordgo.MessageEmbedAuthor{
-			Name: trimField(torrentTitle),
+			Name: trimField(torrent.Title),
 			URL:  torrentURL,
 		},
-		Description: description,
+		Description: trimDescription(comment.Message),
 		Color:       0xf25aa6, // TsukiHime Pink
 		Footer: &discordgo.MessageEmbedFooter{
 			Text: "TsukiHime Comments",
@@ -310,35 +409,18 @@ func (b *DiscordBot) AnnounceTsukihimeComment(channelID string, torrentTitle str
 	if showCommentID {
 		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
 			Name:  "Comment ID",
-			Value: fmt.Sprintf("`%s`", comment.GetID()),
+			Value: fmt.Sprintf("`%s`", comment.CommentID),
 		})
 	}
 
 	if resolveUserContentImage {
-		if imgURL := extractImageURL(comment.GetText()); imgURL != "" {
-			if strings.HasPrefix(imgURL, "/") {
-				imgURL = "https://tsukihime.org" + imgURL
-			}
-			embed.Image = &discordgo.MessageEmbedImage{URL: imgURL}
-			embed.Description = ""
-		}
+		b.resolveEmbedImage(embed, comment.Message, "tsukihime.org")
 	}
 
-	if comment.CreatedAt != "" {
-		t, err := time.Parse(time.RFC3339, ensureUTC(comment.CreatedAt))
-		if err == nil {
-			embed.Timestamp = t.Format(time.RFC3339)
-		}
-	}
+	b.setEmbedTimestamp(embed, comment.Timestamp)
+	b.setEmbedThumbnail(embed, comment.AvatarURL, "default.png")
 
-	if userAvatarURL != "" && !strings.HasSuffix(userAvatarURL, "default.png") {
-		embed.Thumbnail = &discordgo.MessageEmbedThumbnail{
-			URL: userAvatarURL,
-		}
-	}
-
-	if comment.GetParentID() != "" && parentText != "" {
-		// parentText = resolveTsukihimeMentions(parentText) // Removed as there are no user pages
+	if comment.ParentID != "" && parentText != "" {
 		if len(parentText) > 1000 {
 			parentText = parentText[:997] + "..."
 		}
@@ -348,25 +430,52 @@ func (b *DiscordBot) AnnounceTsukihimeComment(channelID string, torrentTitle str
 		})
 	}
 
-	log.Printf("[POST] Announcing TsukiHime comment on torrent '%s' to channel %s", torrentTitle, targetChannel)
-	_, err := b.Session.ChannelMessageSendEmbed(targetChannel, embed)
+	return embed
+}
+
+func (b *DiscordBot) AnnounceTsukihimeComment(
+	channelID string,
+	torrent db.Torrent,
+	comment db.Comment,
+	authorIconURL string,
+	showCommentID bool,
+	resolveUserContentImage bool,
+) error {
+	if channelID == "" {
+		return b.enqueueAnnouncement(
+			"tsukihime",
+			"",
+			torrent.TorrentID,
+			comment.CommentID,
+			authorIconURL,
+			showCommentID,
+			resolveUserContentImage,
+		)
+	}
+
+	parentText := comment.ParentMessage
+	if parentText == "" && comment.ParentID != "" {
+		if parent, ok := b.DB.GetComment("tsukihime", torrent.TorrentID, comment.ParentID); ok {
+			parentText = parent.Message
+		}
+	}
+
+	embed := b.BuildTsukihimeEmbed(
+		torrent,
+		comment,
+		authorIconURL,
+		showCommentID,
+		resolveUserContentImage,
+		parentText,
+	)
+
+	log.Printf(
+		"[POST] Announcing TsukiHime comment on torrent '%s' to channel %s",
+		torrent.Title,
+		channelID,
+	)
+	_, err := b.Session.ChannelMessageSendEmbed(channelID, embed)
 	return err
-}
-
-func ensureUTC(s string) string {
-	if s == "" {
-		return ""
-	}
-	s = strings.Replace(s, " ", "T", 1)
-	// If it doesn't end with Z and doesn't contain a + or - offset near the end
-	if !strings.HasSuffix(s, "Z") && !regexp.MustCompile(`[+-]\d{2}:\d{2}$`).MatchString(s) {
-		return s + "Z"
-	}
-	return s
-}
-
-func resolveTsukihimeMentions(text string) string {
-	return text // Just return text as is
 }
 
 var nekoBTMentionRegex = regexp.MustCompile(`@([a-zA-Z0-9_-]+)`)
@@ -391,7 +500,10 @@ func extractImageURL(text string) string {
 			}
 			req, err := http.NewRequest("GET", text, nil)
 			if err == nil {
-				req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+				req.Header.Set(
+					"User-Agent",
+					"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+				)
 				resp, err := client.Do(req)
 				if err == nil {
 					defer resp.Body.Close()
@@ -410,36 +522,33 @@ func resolveNekoBTMentions(text string) string {
 	return nekoBTMentionRegex.ReplaceAllString(text, "[@$1](https://nekobt.moe/u/$1)")
 }
 
-func (b *DiscordBot) AnnounceAnirenaComment(channelID, torrentID, torrentTitle string, comment scraper.AnirenaComment, authorIconURL string, torrentUploader string, showCommentID bool, resolveUserContentImage bool) error {
-	targetChannel := b.AnnounceChannel
-	if channelID != "" {
-		targetChannel = channelID
-	}
-
+func (b *DiscordBot) BuildAnirenaEmbed(
+	torrent db.Torrent,
+	comment db.Comment,
+	authorIconURL string,
+	showCommentID bool,
+	resolveUserContentImage bool,
+) *discordgo.MessageEmbed {
 	siteBase := "www.anirena.com"
-	commentURL := fmt.Sprintf("https://%s/torrent/%s?tab=comments#tc-comment-%s", siteBase, torrentID, comment.ID)
-
-	description := comment.Body
-	if len(description) > 4096 {
-		description = description[:4093] + "..."
-	}
-
-	var embedImage *discordgo.MessageEmbedImage
-	if resolveUserContentImage {
-		if imgURL := extractImageURL(comment.Body); imgURL != "" {
-			embedImage = &discordgo.MessageEmbedImage{URL: imgURL}
-			description = ""
-		}
-	}
+	commentURL := fmt.Sprintf(
+		"https://%s/torrent/%s?tab=comments#tc-comment-%s",
+		siteBase,
+		torrent.TorrentID,
+		comment.CommentID,
+	)
 
 	authorName := comment.Username
-	if torrentUploader != "" && strings.EqualFold(comment.Username, torrentUploader) {
+	if torrent.Uploader != "" && strings.EqualFold(comment.Username, torrent.Uploader) {
 		authorName = fmt.Sprintf("%s (Uploader)", comment.Username)
-	} else if comment.Role != "" && !strings.EqualFold(comment.Role, "user") {
-		authorName = fmt.Sprintf("%s (%s)", comment.Username, comment.Role)
+	} else if comment.UserRole != "" && !strings.EqualFold(comment.UserRole, "user") {
+		authorName = fmt.Sprintf("%s (%s)", comment.Username, comment.UserRole)
 	}
 
-	authorURL := fmt.Sprintf("https://%s/?q=user%%253A%%22%s%%22", siteBase, urlPathEscape(comment.Username))
+	authorURL := fmt.Sprintf(
+		"https://%s/?q=user%%253A%%22%s%%22",
+		siteBase,
+		urlPathEscape(comment.Username),
+	)
 
 	embedColor := 0xde3d20
 
@@ -447,10 +556,9 @@ func (b *DiscordBot) AnnounceAnirenaComment(channelID, torrentID, torrentTitle s
 		Title:       trimField(authorName),
 		URL:         authorURL,
 		Color:       embedColor,
-		Description: description,
-		Image:       embedImage,
+		Description: trimDescription(comment.Message),
 		Author: &discordgo.MessageEmbedAuthor{
-			Name: trimField(torrentTitle),
+			Name: trimField(torrent.Title),
 			URL:  commentURL,
 		},
 		Footer: &discordgo.MessageEmbedFooter{
@@ -460,19 +568,57 @@ func (b *DiscordBot) AnnounceAnirenaComment(channelID, torrentID, torrentTitle s
 
 	if showCommentID {
 		embed.Fields = []*discordgo.MessageEmbedField{
-			{Name: "Comment ID", Value: fmt.Sprintf("[%s](%s)", comment.ID, commentURL), Inline: true},
+			{
+				Name:   "Comment ID",
+				Value:  fmt.Sprintf("[%s](%s)", comment.CommentID, commentURL),
+				Inline: true,
+			},
 		}
 	}
 
-	if comment.CreatedAt != "" {
-		t, err := time.Parse(time.RFC3339, ensureUTC(comment.CreatedAt))
-		if err == nil {
-			embed.Timestamp = t.Format(time.RFC3339)
-		}
+	if resolveUserContentImage {
+		b.resolveEmbedImage(embed, comment.Message, "")
 	}
 
-	log.Printf("[POST] Sending AniRena Announcement embed to channel %s for torrent '%s'", targetChannel, torrentTitle)
-	_, err := b.Session.ChannelMessageSendEmbed(targetChannel, embed)
+	b.setEmbedTimestamp(embed, comment.Timestamp)
+
+	return embed
+}
+
+func (b *DiscordBot) AnnounceAnirenaComment(
+	channelID string,
+	torrent db.Torrent,
+	comment db.Comment,
+	authorIconURL string,
+	showCommentID bool,
+	resolveUserContentImage bool,
+) error {
+	if channelID == "" {
+		return b.enqueueAnnouncement(
+			"anirena",
+			"",
+			torrent.TorrentID,
+			comment.CommentID,
+			authorIconURL,
+			showCommentID,
+			resolveUserContentImage,
+		)
+	}
+
+	embed := b.BuildAnirenaEmbed(
+		torrent,
+		comment,
+		authorIconURL,
+		showCommentID,
+		resolveUserContentImage,
+	)
+
+	log.Printf(
+		"[POST] Sending AniRena Announcement embed to channel %s for torrent '%s'",
+		channelID,
+		torrent.Title,
+	)
+	_, err := b.Session.ChannelMessageSendEmbed(channelID, embed)
 	return err
 }
 

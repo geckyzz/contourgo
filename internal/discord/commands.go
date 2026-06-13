@@ -3,6 +3,7 @@ package discord
 import (
 	"fmt"
 	"log"
+	"slices"
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
@@ -143,6 +144,10 @@ func (b *DiscordBot) registerSlashCommands(s *discordgo.Session) {
 				},
 			},
 		},
+		{
+			Name:        "update",
+			Description: "Check for updates and update the bot binary if available",
+		},
 	}
 
 	// Fetch existing commands (guild-specific if guildID is set, otherwise global)
@@ -156,9 +161,17 @@ func (b *DiscordBot) registerSlashCommands(s *discordgo.Session) {
 	if guildID == "" && b.Config.Discord.Server != "" {
 		guildCmds, err := s.ApplicationCommands(s.State.User.ID, b.Config.Discord.Server)
 		if err == nil && len(guildCmds) > 0 {
-			log.Printf("Cleaning up %d guild-scoped commands from Server ID: %s", len(guildCmds), b.Config.Discord.Server)
+			log.Printf(
+				"Cleaning up %d guild-scoped commands from Server ID: %s",
+				len(guildCmds),
+				b.Config.Discord.Server,
+			)
 			for _, gCmd := range guildCmds {
-				log.Printf("[CLEANUP] Deleting guild-scoped command: %s (ID: %s)", gCmd.Name, gCmd.ID)
+				log.Printf(
+					"[CLEANUP] Deleting guild-scoped command: %s (ID: %s)",
+					gCmd.Name,
+					gCmd.ID,
+				)
 				s.ApplicationCommandDelete(s.State.User.ID, b.Config.Discord.Server, gCmd.ID)
 			}
 		}
@@ -169,7 +182,11 @@ func (b *DiscordBot) registerSlashCommands(s *discordgo.Session) {
 	for _, cmd := range existingCmds {
 		existingMap[cmd.Name] = cmd
 	}
-	log.Printf("Syncing %d desired global slash commands with %d existing ones", len(commands), len(existingCmds))
+	log.Printf(
+		"Syncing %d desired global slash commands with %d existing ones",
+		len(commands),
+		len(existingCmds),
+	)
 
 	activeCmdNames := make(map[string]bool)
 	for _, cmd := range commands {
@@ -242,7 +259,12 @@ func (b *DiscordBot) registerSlashCommands(s *discordgo.Session) {
 
 		if exists {
 			log.Printf("[UPDATE] %s (ID: %s)", desiredCmd.Name, existing.ID)
-			updatedCmd, err := s.ApplicationCommandEdit(s.State.User.ID, guildID, existing.ID, desiredCmd)
+			updatedCmd, err := s.ApplicationCommandEdit(
+				s.State.User.ID,
+				guildID,
+				existing.ID,
+				desiredCmd,
+			)
 			if err != nil {
 				log.Printf("ERROR: Cannot update slash command '%s': %v.", desiredCmd.Name, err)
 				hasFailure = true
@@ -264,8 +286,14 @@ func (b *DiscordBot) registerSlashCommands(s *discordgo.Session) {
 	b.Commands = registeredCmds
 
 	if hasFailure {
-		inviteURL := fmt.Sprintf("https://discord.com/oauth2/authorize?client_id=%s&permissions=8&integration_type=0&scope=bot+applications.commands", s.State.User.ID)
-		log.Printf("👉 Please authorize/re-authorize the bot using this link to grant the applications.commands scope: %s", inviteURL)
+		inviteURL := fmt.Sprintf(
+			"https://discord.com/oauth2/authorize?client_id=%s&permissions=8&integration_type=0&scope=bot+applications.commands",
+			s.State.User.ID,
+		)
+		log.Printf(
+			"👉 Please authorize/re-authorize the bot using this link to grant the applications.commands scope: %s",
+			inviteURL,
+		)
 	}
 }
 
@@ -281,10 +309,8 @@ func (b *DiscordBot) hasInteractionAccess(i *discordgo.InteractionCreate) bool {
 		return true
 	}
 
-	for _, id := range b.Config.Discord.Members.Others.Allow {
-		if id == userID {
-			return true
-		}
+	if slices.Contains(b.Config.Discord.Members.Others.Allow, userID) {
+		return true
 	}
 
 	if i.GuildID == "" {
@@ -300,7 +326,8 @@ func (b *DiscordBot) hasInteractionAccess(i *discordgo.InteractionCreate) bool {
 		return true
 	}
 
-	if b.Config.Discord.Members.Moderators.Allow && (perms&discordgo.PermissionManageMessages) != 0 {
+	if b.Config.Discord.Members.Moderators.Allow &&
+		(perms&discordgo.PermissionManageMessages) != 0 {
 		return true
 	}
 
@@ -327,10 +354,21 @@ func (b *DiscordBot) onInteractionCreate(s *discordgo.Session, i *discordgo.Inte
 	for _, opt := range i.ApplicationCommandData().Options {
 		params = append(params, fmt.Sprintf("%s: %v", opt.Name, opt.Value))
 	}
-	log.Printf("[Command] User %s (%s) triggered /%s with params: {%s}", userName, userID, cmdName, strings.Join(params, ", "))
+	log.Printf(
+		"[Command] User %s (%s) triggered /%s with params: {%s}",
+		userName,
+		userID,
+		cmdName,
+		strings.Join(params, ", "),
+	)
 
 	if !b.hasInteractionAccess(i) {
-		log.Printf("[Action] Permission denied for user %s (%s) attempting command /%s", userName, userID, cmdName)
+		log.Printf(
+			"[Action] Permission denied for user %s (%s) attempting command /%s",
+			userName,
+			userID,
+			cmdName,
+		)
 		log.Printf("[POST] Responding to /%s command (Permission Denied)", cmdName)
 		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -376,10 +414,17 @@ func (b *DiscordBot) onInteractionCreate(s *discordgo.Session, i *discordgo.Inte
 	case "latest":
 		log.Printf("[Action] Processing latest command")
 		b.handleSlashLatest(s, i, optionMap)
+	case "update":
+		log.Printf("[Action] Processing update command")
+		b.handleSlashUpdate(s, i)
 	}
 }
 
-func (b *DiscordBot) sendFollowupMessage(s *discordgo.Session, interaction *discordgo.Interaction, content string) {
+func (b *DiscordBot) sendFollowupMessage(
+	s *discordgo.Session,
+	interaction *discordgo.Interaction,
+	content string,
+) {
 	log.Printf("[POST] Sending Followup Message: %s", content)
 	_, err := s.FollowupMessageCreate(interaction, true, &discordgo.WebhookParams{
 		Content: content,
