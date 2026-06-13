@@ -47,7 +47,7 @@ func (m *Monitor) enqueueAnnouncement(
 ) {
 	if !m.DumpComments {
 		log.Printf("%s Queuing announcement for comment %s on %s", prefix, commentID, torrentID)
-		err := m.bot.DB.EnqueueAnnouncement(
+		err := m.bot.EnqueueAnnouncement(
 			service,
 			"",
 			torrentID,

@@ -49,15 +49,20 @@ func (b *DiscordBot) queueWorker() {
 				continue
 			}
 
+			channelID := a.ChannelID
+			if channelID == "" {
+				channelID = b.AnnounceChannel
+			}
+
 			log.Printf(
 				"[QUEUE] Posting announcement %d for %s (torrent: %s, channel: %s, retry: %d)",
 				a.ID,
 				a.Service,
 				a.Torrent.Title,
-				a.ChannelID,
+				channelID,
 				a.RetryCount,
 			)
-			_, err = b.Session.ChannelMessageSendEmbed(a.ChannelID, embed)
+			_, err = b.Session.ChannelMessageSendEmbed(channelID, embed)
 			if err != nil {
 				log.Printf("[QUEUE] Error sending embed for ID %d: %v", a.ID, err)
 				b.DB.FailAnnouncement(a.ID, err.Error())

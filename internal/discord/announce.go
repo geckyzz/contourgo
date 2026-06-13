@@ -13,7 +13,7 @@ import (
 	"github.com/geckyzz/contourgo/internal/db"
 )
 
-func (b *DiscordBot) enqueueAnnouncement(
+func (b *DiscordBot) EnqueueAnnouncement(
 	service, channelID, torrentID, commentID, authorIconURL string,
 	showCommentID, resolveImage bool,
 ) error {
@@ -154,7 +154,7 @@ func (b *DiscordBot) AnnounceNyaaComment(
 	resolveUserContentImage bool,
 ) error {
 	if channelID == "" {
-		return b.enqueueAnnouncement(
+		return b.EnqueueAnnouncement(
 			service,
 			"",
 			torrent.TorrentID,
@@ -257,7 +257,7 @@ func (b *DiscordBot) AnnounceATComment(
 	resolveUserContentImage bool,
 ) error {
 	if channelID == "" {
-		return b.enqueueAnnouncement(
+		return b.EnqueueAnnouncement(
 			service,
 			"",
 			torrent.TorrentID,
@@ -342,7 +342,7 @@ func (b *DiscordBot) AnnounceNekoBTComment(
 	resolveUserContentImage bool,
 ) error {
 	if channelID == "" {
-		return b.enqueueAnnouncement(
+		return b.EnqueueAnnouncement(
 			"nekobt",
 			"",
 			torrent.TorrentID,
@@ -442,7 +442,7 @@ func (b *DiscordBot) AnnounceTsukihimeComment(
 	resolveUserContentImage bool,
 ) error {
 	if channelID == "" {
-		return b.enqueueAnnouncement(
+		return b.EnqueueAnnouncement(
 			"tsukihime",
 			"",
 			torrent.TorrentID,
@@ -594,7 +594,7 @@ func (b *DiscordBot) AnnounceAnirenaComment(
 	resolveUserContentImage bool,
 ) error {
 	if channelID == "" {
-		return b.enqueueAnnouncement(
+		return b.EnqueueAnnouncement(
 			"anirena",
 			"",
 			torrent.TorrentID,
