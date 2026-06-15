@@ -543,7 +543,7 @@ func extractImageURL(text string) string {
 }
 
 func resolveNekoBTMentions(text string) string {
-	return nekoBTMentionRegex.ReplaceAllString(text, "[@$1](https://nekobt.moe/u/$1)")
+	return nekoBTMentionRegex.ReplaceAllString(text, "[@$1](https://nekobt.to/u/$1)")
 }
 
 func (b *DiscordBot) BuildAnirenaEmbed(
