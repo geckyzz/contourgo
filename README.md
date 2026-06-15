@@ -148,6 +148,7 @@ The bot can be configured to map specific strings found in comments (e.g., `@gec
 - **Verification**: The `/test` command will report any detected mentions in plain text to verify your configuration.
 
 **Configuration Example**:
+
 ```toml
 [discord]
 mentions = { "geckyzz" = 123456789012345678, "cicak" = "876543210987654321" }
