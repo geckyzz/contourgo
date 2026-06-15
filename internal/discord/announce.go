@@ -685,8 +685,10 @@ func (b *DiscordBot) GetMentionsForText(text string) string {
 		return ""
 	}
 	var mentions []string
-	for find, snowflake := range b.Config.Discord.Mentions {
-		if strings.Contains(text, "@"+find) {
+	lowerText := strings.ToLower(text)
+	for find, snowflakeAny := range b.Config.Discord.Mentions {
+		snowflake := fmt.Sprintf("%v", snowflakeAny)
+		if strings.Contains(lowerText, "@"+strings.ToLower(find)) {
 			mentions = append(mentions, "<@"+snowflake+">")
 		}
 	}
@@ -698,8 +700,9 @@ func (b *DiscordBot) ResolveMentionsPlain(text string) string {
 		return ""
 	}
 	var mentions []string
+	lowerText := strings.ToLower(text)
 	for find := range b.Config.Discord.Mentions {
-		if strings.Contains(text, "@"+find) {
+		if strings.Contains(lowerText, "@"+strings.ToLower(find)) {
 			mentions = append(mentions, find)
 		}
 	}

@@ -142,15 +142,15 @@ If you provide a keyword on feedback monitor, it will be matched against the com
 
 #### Mention Mapping (`discord.mentions`)
 
-The bot can be configured to map specific strings found in comments (e.g., `@geckyzz`) to Discord user snowflakes.
+The bot can be configured to map specific strings found in comments (e.g., `@geckyzz`) to Discord user snowflakes. **Mapping is case-insensitive.**
 
-- **Announcement behavior**: If a mapped name is found in a comment, the bot will include the corresponding Discord mention in the message content (the text above the embed). This ensures the user is pinged. The original text inside the embed description remains unchanged.
+- **Announcement behavior**: If a mapped name is found in a comment (e.g., `@Geckyzz` or `@geckyzz`), the bot will include the corresponding Discord mention in the message content (the text above the embed). This ensures the user is pinged. The original text inside the embed description remains unchanged.
 - **Verification**: The `/test` command will report any detected mentions in plain text to verify your configuration.
 
 **Configuration Example**:
 ```toml
 [discord]
-mentions = { "geckyzz" = "123456789012345678", "cicak" = "876543210987654321" }
+mentions = { "geckyzz" = 123456789012345678, "cicak" = "876543210987654321" }
 ```
 
 ---

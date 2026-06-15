@@ -1,7 +1,7 @@
 [discord]
 token = "MTM....."
 server = "1326230604295180423" # server snowflake it host and to interacts
-mentions = { "geckyzz" = "123456789012345678" } # Map @name in comments to <@snowflake> in announcement message key
+mentions = { "geckyzz" = 123456789012345678 } # Map @name in comments to <@snowflake> in announcement message key (supports string or integer)
 announce.channel = "1234567890" # channel snowflake to announce at
 members.admins.allow = true # give all admins (other than the bot owner) access to the bot
 members.moderators.allow = false # give all members with manage message perm to access the bot
