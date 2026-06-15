@@ -92,7 +92,11 @@ func (s *AnimeToshoOldScraper) ScrapeComments(page int, feedback bool) ([]ATComm
 				if err == nil {
 					p := uParsed.Path
 					p = strings.TrimPrefix(p, "/view/")
-					torrentID = p
+					if idx := strings.LastIndex(p, "."); idx != -1 {
+						torrentID = p[idx+1:]
+					} else {
+						torrentID = p
+					}
 				}
 				txt := strings.TrimSpace(a.Text())
 				if txt != "Comment" && txt != "Delete" && torrentTitle == "" {

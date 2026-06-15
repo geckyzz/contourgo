@@ -46,7 +46,7 @@ func (db *DB) GetStoredCommentCount(service, torrentID string) (int, bool) {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 	var count int
-	err := db.Conn.QueryRow("SELECT comment_count FROM torrents WHERE service = ? AND torrent_id = ?", service, torrentID).
+	err := db.Conn.QueryRow("SELECT comment_count FROM torrents WHERE service = ? AND (torrent_id = ? OR torrent_id LIKE '%.' || ?)", service, torrentID, torrentID).
 		Scan(&count)
 	if err == sql.ErrNoRows {
 		return 0, false
@@ -84,8 +84,8 @@ func (db *DB) IsCommentStored(service, torrentID, commentID string) bool {
 	var exists int
 	err := db.Conn.QueryRow(`
 		SELECT 1 FROM comments 
-		WHERE service = ? AND torrent_id = ? AND comment_id = ?
-	`, service, torrentID, commentID).Scan(&exists)
+		WHERE service = ? AND (torrent_id = ? OR torrent_id LIKE '%.' || ?) AND comment_id = ?
+	`, service, torrentID, torrentID, commentID).Scan(&exists)
 	return err == nil
 }
 
@@ -112,8 +112,8 @@ func (db *DB) GetComment(service, torrentID, commentID string) (Comment, bool) {
 		SELECT service, torrent_id, comment_id, username, message, timestamp, position, 
 		       COALESCE(user_role, ''), COALESCE(avatar_url, ''), COALESCE(parent_id, ''), COALESCE(parent_message, '')
 		FROM comments 
-		WHERE service = ? AND torrent_id = ? AND comment_id = ?
-	`, service, torrentID, commentID).Scan(&c.Service, &c.TorrentID, &c.CommentID, &c.Username, &c.Message, &c.Timestamp, &c.Position, &c.UserRole, &c.AvatarURL, &c.ParentID, &c.ParentMessage)
+		WHERE service = ? AND (torrent_id = ? OR torrent_id LIKE '%.' || ?) AND comment_id = ?
+	`, service, torrentID, torrentID, commentID).Scan(&c.Service, &c.TorrentID, &c.CommentID, &c.Username, &c.Message, &c.Timestamp, &c.Position, &c.UserRole, &c.AvatarURL, &c.ParentID, &c.ParentMessage)
 	if err == sql.ErrNoRows {
 		return c, false
 	}
@@ -130,8 +130,8 @@ func (db *DB) GetTorrent(service, torrentID string) (Torrent, bool) {
 	err := db.Conn.QueryRow(`
 		SELECT service, torrent_id, title, comment_count, COALESCE(uploaded_at, 0), COALESCE(uploader, ''), last_scraped_at
 		FROM torrents
-		WHERE service = ? AND torrent_id = ?
-	`, service, torrentID).Scan(&t.Service, &t.TorrentID, &t.Title, &t.CommentCount, &t.UploadedAt, &t.Uploader, &t.LastScrapedAt)
+		WHERE service = ? AND (torrent_id = ? OR torrent_id LIKE '%.' || ?)
+	`, service, torrentID, torrentID).Scan(&t.Service, &t.TorrentID, &t.Title, &t.CommentCount, &t.UploadedAt, &t.Uploader, &t.LastScrapedAt)
 	if err == sql.ErrNoRows {
 		return t, false
 	}
