@@ -56,10 +56,58 @@ func (b *DiscordBot) handleSlashReload(
 }
 
 func (b *DiscordBot) handleSlashPing(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	dbStart := time.Now()
+	var dummy int
+	err := b.DB.Conn.QueryRow("SELECT 1").Scan(&dummy)
+	dbDuration := time.Since(dbStart)
+
+	dbStatus := "Unavailable"
+	if err == nil {
+		dbStatus = fmt.Sprintf(
+			"`%.2fms`\n-# *Roundtrip database query speed*",
+			float64(dbDuration.Microseconds())/1000.0,
+		)
+	}
+
+	uptimeEpoch := b.StartTime.Unix()
+	uptimeStr := fmt.Sprintf("<t:%d:R>", uptimeEpoch)
+
+	version, sha := GetVersionInfo()
+
 	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
 		Data: &discordgo.InteractionResponseData{
-			Content: fmt.Sprintf("🏓 Pong! Latency: %v", s.HeartbeatLatency()),
+			Embeds: []*discordgo.MessageEmbed{
+				{
+					Title: "🏓 Pong!",
+					Color: 0x3498db,
+					Fields: []*discordgo.MessageEmbedField{
+						{
+							Name: "⚡ Websocket API",
+							Value: fmt.Sprintf(
+								"`%v`\n-# *Discord's Gateway heartbeat latency*",
+								s.HeartbeatLatency(),
+							),
+							Inline: true,
+						},
+						{
+							Name:   "🔎 Database Latency",
+							Value:  dbStatus,
+							Inline: true,
+						},
+						{
+							Name:   "📅 Uptime",
+							Value:  uptimeStr,
+							Inline: true,
+						},
+						{
+							Name:   "📦 Version",
+							Value:  fmt.Sprintf("`v%s (%s)`", version, sha),
+							Inline: false,
+						},
+					},
+				},
+			},
 		},
 	})
 }
