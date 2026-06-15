@@ -48,7 +48,7 @@ func (b *DiscordBot) setEmbedThumbnail(
 	embed *discordgo.MessageEmbed,
 	avatarURL, defaultSuffix string,
 ) {
-	if avatarURL != "" && !strings.HasSuffix(avatarURL, defaultSuffix) {
+	if avatarURL != "" && (defaultSuffix == "" || !strings.HasSuffix(avatarURL, defaultSuffix)) {
 		embed.Thumbnail = &discordgo.MessageEmbedThumbnail{
 			URL: avatarURL,
 		}
@@ -287,15 +287,17 @@ func (b *DiscordBot) BuildNekoBTEmbed(
 	resolveUserContentImage bool,
 	parentText string,
 ) *discordgo.MessageEmbed {
-	torrentURL := fmt.Sprintf("https://nekobt.to/view/%s", torrent.TorrentID)
+	baseTorrentURL := fmt.Sprintf("https://nekobt.to/torrents/%s", torrent.TorrentID)
+	jumpToCommentURL := fmt.Sprintf("https://nekobt.to/torrents/%s?com=%s", torrent.TorrentID, comment.CommentID)
 
 	description := resolveNekoBTMentions(comment.Message)
 
 	embed := &discordgo.MessageEmbed{
 		Title: trimField(comment.Username),
+		URL:   jumpToCommentURL,
 		Author: &discordgo.MessageEmbedAuthor{
 			Name:    trimField(torrent.Title),
-			URL:     torrentURL,
+			URL:     baseTorrentURL,
 			IconURL: authorIconURL,
 		},
 		Description: trimDescription(description),
@@ -328,7 +330,7 @@ func (b *DiscordBot) BuildNekoBTEmbed(
 	}
 
 	b.setEmbedTimestamp(embed, comment.Timestamp)
-	b.setEmbedThumbnail(embed, comment.AvatarURL, "/null")
+	b.setEmbedThumbnail(embed, comment.AvatarURL, "")
 
 	return embed
 }
