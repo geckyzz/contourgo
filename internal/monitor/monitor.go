@@ -57,6 +57,14 @@ func (m *Monitor) isDue(service, key string, monitorCfg config.MonitorConfig, fo
 	return time.Since(lastCheck) >= interval
 }
 
+func alignToInterval(t time.Time, d time.Duration) time.Time {
+	if d <= 0 {
+		return t
+	}
+	totalPast := t.UnixNano() % int64(d)
+	return t.Add(-time.Duration(totalPast))
+}
+
 func (m *Monitor) updateLastCheck(service, key string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -67,7 +75,19 @@ func (m *Monitor) updateLastCheck(service, key string) {
 	if m.lastCheckMap[service] == nil {
 		m.lastCheckMap[service] = make(map[string]time.Time)
 	}
-	m.lastCheckMap[service][key] = time.Now()
+
+	now := time.Now()
+	if m.config.Config.Time.Uniform {
+		interval := config.ParseISO8601Duration(m.config.Config.Monitor.By)
+		inner, ok := m.config.Monitors[service]
+		if ok {
+			if monitorCfg, exists := inner[key]; exists && monitorCfg.Monitor.By != "" {
+				interval = config.ParseISO8601Duration(monitorCfg.Monitor.By)
+			}
+		}
+		now = alignToInterval(now, interval)
+	}
+	m.lastCheckMap[service][key] = now
 }
 
 func (m *Monitor) hasActiveMonitorsDue(service string, force bool) bool {

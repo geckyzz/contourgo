@@ -13,6 +13,7 @@ members.others.allow = [] # list of user snowflakes to have access
 
 [config]
 monitor.by = "PT30M" # how long before next check to be attempted in ISO 8601 (or "30m")
+time.uniform = false # align checks to the closest tens of minutes (e.g. 00:35 -> next at 00:40)
 nyaa.proxy.url = "" # Your nyaa-api-worker base url
 animetosho.old.page.max = 5
 animetosho.new.page.max = 5

@@ -45,11 +45,16 @@ type AllowListConfig struct {
 }
 
 type MainConfig struct {
+	Time       TimeConfig        `toml:"time"`
 	Monitor    MonitorTimeConfig `toml:"monitor"`
 	Nyaa       NyaaConfig        `toml:"nyaa"`
 	Animetosho AnimetoshoConfig  `toml:"animetosho"`
 	Nekobt     NekobtConfig      `toml:"nekobt"`
 	Anirena    AnirenaConfig     `toml:"anirena"`
+}
+
+type TimeConfig struct {
+	Uniform bool `toml:"uniform"`
 }
 
 type MonitorTimeConfig struct {
@@ -195,6 +200,12 @@ func LoadConfig(path string) (*Config, error) {
 					if mon, ok := configData["monitor"].(map[string]any); ok {
 						if by, ok := mon["by"].(string); ok {
 							cfg.Config.Monitor.By = by
+						}
+					}
+					// time.uniform
+					if t, ok := configData["time"].(map[string]any); ok {
+						if u, ok := t["uniform"].(bool); ok {
+							cfg.Config.Time.Uniform = u
 						}
 					}
 					// nyaa.proxy.url
