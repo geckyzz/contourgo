@@ -204,7 +204,7 @@ func (m *Monitor) processATComments(
 			}
 
 			if !m.db.IsCommentStored(service, dbTorrentID, comment.ID) {
-				var parentID, parentMsg string
+				var parentID, parentMsg, fullTitle string
 				targetURL := "https://animetosho.org"
 				if service == "animetosho_new" {
 					targetURL = "https://animetosho.xyz"
@@ -224,12 +224,24 @@ func (m *Monitor) processATComments(
 				client := &http.Client{
 					Timeout: 15 * time.Second,
 				}
-				parentID, parentMsg = scraper.ResolveParentInfo(client, targetURL, comment.ID)
+				parentID, parentMsg, fullTitle = scraper.ResolveParentInfo(
+					client,
+					targetURL,
+					comment.ID,
+				)
 				if parentID != "" {
 					log.Printf("%s[%s] Resolved parent comment ID=%s", prefix, key, parentID)
 				}
+				if fullTitle != "" {
+					log.Printf("%s[%s] Resolved full title: %s", prefix, key, fullTitle)
+				}
 
-				m.db.UpdateTorrent(service, dbTorrentID, comment.Title, 1, comment.Timestamp, "")
+				titleToUse := comment.Title
+				if fullTitle != "" {
+					titleToUse = fullTitle
+				}
+
+				m.db.UpdateTorrent(service, dbTorrentID, titleToUse, 1, comment.Timestamp, "")
 				m.db.StoreComment(
 					service,
 					dbTorrentID,

@@ -257,10 +257,14 @@ func ResolveATParent(doc *goquery.Document, commentID string) (parentID string, 
 	return "", ""
 }
 
-func ResolveParentInfo(client *http.Client, targetURL string, commentID string) (string, string) {
+func ResolveParentInfo(
+	client *http.Client,
+	targetURL string,
+	commentID string,
+) (parentID string, parentText string, fullTitle string) {
 	req, err := http.NewRequest("GET", targetURL, nil)
 	if err != nil {
-		return "", ""
+		return "", "", ""
 	}
 	req.Header.Set(
 		"User-Agent",
@@ -268,15 +272,22 @@ func ResolveParentInfo(client *http.Client, targetURL string, commentID string) 
 	)
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", ""
+		return "", "", ""
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return "", ""
+		return "", "", ""
 	}
 	doc, err := goquery.NewDocumentFromReader(resp.Body)
 	if err != nil {
-		return "", ""
+		return "", "", ""
 	}
-	return ResolveATParent(doc, commentID)
+
+	titleSel := doc.Find("h2#title")
+	if titleSel.Length() > 0 {
+		fullTitle = strings.TrimSpace(titleSel.Text())
+	}
+
+	parentID, parentText = ResolveATParent(doc, commentID)
+	return parentID, parentText, fullTitle
 }
