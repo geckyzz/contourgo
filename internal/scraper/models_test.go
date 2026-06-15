@@ -1,8 +1,11 @@
 package scraper
 
 import (
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/PuerkitoBio/goquery"
 )
 
 func TestParseATTime(t *testing.T) {
@@ -54,5 +57,49 @@ func TestParseATTime(t *testing.T) {
 				)
 			}
 		})
+	}
+}
+
+func TestProcessMessageLinks(t *testing.T) {
+	const htmlInput = `<div class="comment_message">
+		<a href="https://example.com/project/abcdef1234567890abcdef1234567890">https://example.com/project/abcdef12...34567890</a><br/>
+		^^ DDLs here ^^<br/><br/>
+		If the torrent is on NekoBT or AnimeTosho and under 10G you can post its link at <a href="https://example.test/notify">https://example.test/notify</a> to auto parse it...
+		Read more at <a href="/feedback?page=44#comment946">feedback page</a>
+	</div>`
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(htmlInput))
+	if err != nil {
+		t.Fatalf("failed to parse HTML: %v", err)
+	}
+
+	sel := doc.Find("div.comment_message")
+	sel.Find("br").ReplaceWithHtml("\n")
+
+	// Apply processing
+	sel.Find("a").Each(func(i int, aSel *goquery.Selection) {
+		href, exists := aSel.Attr("href")
+		if !exists {
+			return
+		}
+		if strings.HasPrefix(href, "/") {
+			href = "https://animetosho.xyz" + href
+		}
+		text := strings.TrimSpace(aSel.Text())
+		if strings.HasPrefix(text, "http://") || strings.HasPrefix(text, "https://") {
+			aSel.ReplaceWithHtml(href)
+		} else {
+			aSel.ReplaceWithHtml("[" + text + "](" + href + ")")
+		}
+	})
+
+	text := strings.TrimSpace(sel.Text())
+
+	// Standardize whitespace for comparison (replace tabs/multiple spaces or check contains)
+	if !strings.Contains(text, "https://example.com/project/abcdef1234567890abcdef1234567890") {
+		t.Errorf("expected text to contain the full restored URL, but got:\n%s", text)
+	}
+	if !strings.Contains(text, "[feedback page](https://animetosho.xyz/feedback?page=44#comment946)") {
+		t.Errorf("expected text to contain the markdown link, but got:\n%s", text)
 	}
 }

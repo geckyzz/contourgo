@@ -2,9 +2,12 @@ package scraper
 
 import (
 	"fmt"
+	"html"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/PuerkitoBio/goquery"
 )
 
 type NyaaTorrent struct {
@@ -141,4 +144,28 @@ type NekoBTResponse struct {
 type NekoBTSearchResult struct {
 	Results []NekoBTTorrent `json:"results"`
 	More    bool            `json:"more"`
+}
+
+func processMessageLinks(messageDiv *goquery.Selection, baseURL string) {
+	messageDiv.Find("a").Each(func(i int, aSel *goquery.Selection) {
+		href, exists := aSel.Attr("href")
+		if !exists {
+			return
+		}
+		// Resolve relative URL
+		if strings.HasPrefix(href, "/") {
+			href = baseURL + href
+		}
+
+		text := strings.TrimSpace(aSel.Text())
+
+		// If text looks like a URL (starts with http:// or https://), replace with the full href URL.
+		if strings.HasPrefix(text, "http://") || strings.HasPrefix(text, "https://") {
+			aSel.ReplaceWithHtml(html.EscapeString(href))
+		} else {
+			// Otherwise format as a markdown link
+			markdownLink := fmt.Sprintf("[%s](%s)", text, href)
+			aSel.ReplaceWithHtml(html.EscapeString(markdownLink))
+		}
+	})
 }

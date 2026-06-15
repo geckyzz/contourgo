@@ -157,6 +157,7 @@ func (s *AnimeToshoOldScraper) ScrapeComments(page int, feedback bool) ([]ATComm
 		}
 
 		messageDiv := sel.Find("div.user_message_c")
+		processMessageLinks(messageDiv, s.baseURL)
 		messageDiv.Find("br").ReplaceWithHtml("\n")
 		message := strings.TrimSpace(messageDiv.Text())
 
