@@ -90,6 +90,7 @@ For initial database seeding without spamming Discord:
 | `discord.fields.comment_id`          | Global default to toggle rendering comment ID           | `false`    |
 | `discord.display.user_content_image` | Global default to toggle extracting user content images | `false`    |
 | `config.monitor.by`                  | Check interval (e.g., `PT10M` or `10m`)                 | `PT30M`    |
+| `config.time.uniform`                | Align check schedules to interval boundaries            | `false`    |
 | `config.nyaa.proxy.url`              | URL to your Nyaa/Sukebei API Proxy                      | (Required) |
 | `config.nekobt.api.key`              | Your nekoBT SSID API key                                | (Optional) |
 | `config.anirena.api.key`             | Your AniRena API key                                    | (Optional) |
@@ -137,6 +138,31 @@ it will monitor general feedback comments instead of specific torrent comments.
 
 If you provide a keyword on feedback monitor, it will be matched against the comment message content
 (case-insensitive).
+
+---
+
+### ⏱️ Uniform Scheduling Alignment (`config.time.uniform`)
+
+When `config.time.uniform` is set to `true`, the bot aligns all check times to the natural boundaries of each monitor's configured interval. This ensures tasks run "on time" relative to the clock (e.g., exactly at `:00`, `:15`, `:30`, `:45`), even if the bot is booted at an arbitrary time.
+
+#### How it works:
+
+1. **Immediate Startup Check**: The bot performs its initial checks immediately on startup without any delay.
+2. **Dynamic Boundary Alignment**: Instead of sleeping, the bot offsets the `lastCheck` timestamp of each monitor backward to the closest natural divisor boundary of its interval duration.
+3. **No Drift / Shrinkage**: Future checks will trigger precisely on-time relative to the clock according to the interval.
+
+#### Example Scenario:
+
+If the bot is booted at **`00:05`**:
+
+- **Global Interval (`15m`)**:
+  - Runs immediately on boot at **`00:05`**.
+  - Aligns `lastCheck` to **`00:00`** (the previous 15-minute boundary).
+  - Subsequent checks run at exactly **`00:15`**, **`00:30`**, **`00:45`**, **`01:00`** etc.
+- **Monitor Override (`30m`)**:
+  - Runs immediately on boot at **`00:05`**.
+  - Aligns `lastCheck` to **`00:00`** (the previous 30-minute boundary).
+  - Subsequent checks run at exactly **`00:30`**, **`01:00`**, **`01:30`** etc.
 
 ---
 
