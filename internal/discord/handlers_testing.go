@@ -193,20 +193,7 @@ func (b *DiscordBot) handleSlashTest(
 				false,
 				false,
 			)
-			if err != nil {
-				b.sendFollowupMessage(
-					s,
-					i.Interaction,
-					fmt.Sprintf("❌ Error creating test embed: %v", err),
-				)
-			} else {
-				mentions := b.ResolveMentionsPlain(dbComment.Message, false)
-				msg := fmt.Sprintf("✅ Test successful! Sent most recent comment from **%s**.", targetTorrent.Name)
-				if mentions != "" {
-					msg += fmt.Sprintf(" Mentions found: `%s`", mentions)
-				}
-				b.sendFollowupMessage(s, i.Interaction, msg)
-			}
+			b.handleTestAnnounceResult(s, i, err, dbComment.Message, targetTorrent.Name)
 			return
 		}
 
@@ -304,16 +291,7 @@ func (b *DiscordBot) handleSlashTest(
 			dbComment := db.Comment{Service: service, TorrentID: firstComment.TorrentID, CommentID: firstComment.ID, Username: firstComment.Username, Message: firstComment.Message, Timestamp: firstComment.Timestamp}
 
 			err := b.AnnounceATComment(i.ChannelID, service, dbTorrent, dbComment, "", false, false, false)
-			if err != nil {
-				b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ Error creating test embed: %v", err))
-			} else {
-				mentions := b.ResolveMentionsPlain(dbComment.Message, false)
-				msg := fmt.Sprintf("✅ Test successful! Sent most recent comment from **%s**.", firstComment.Title)
-				if mentions != "" {
-					msg += fmt.Sprintf(" Mentions found: `%s`", mentions)
-				}
-				b.sendFollowupMessage(s, i.Interaction, msg)
-			}
+			b.handleTestAnnounceResult(s, i, err, dbComment.Message, firstComment.Title)
 			return
 		}
 
@@ -422,16 +400,7 @@ func (b *DiscordBot) handleSlashTest(
 			dbComment := db.Comment{Service: "anirena", TorrentID: targetTorrent.ID, CommentID: firstComment.ID, Username: firstComment.Username, Message: firstComment.Body, Timestamp: ts, UserRole: firstComment.Role}
 
 			err = b.AnnounceAnirenaComment(i.Interaction.ChannelID, dbTorrent, dbComment, "", false, false, false)
-			if err != nil {
-				b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ Error creating test embed: %v", err))
-			} else {
-				mentions := b.ResolveMentionsPlain(dbComment.Message, false)
-				msg := fmt.Sprintf("✅ Test successful! Sent most recent comment from **%s**.", targetTorrent.FullTitle())
-				if mentions != "" {
-					msg += fmt.Sprintf(" Mentions found: `%s`", mentions)
-				}
-				b.sendFollowupMessage(s, i.Interaction, msg)
-			}
+			b.handleTestAnnounceResult(s, i, err, dbComment.Message, targetTorrent.FullTitle())
 			return
 		}
 
@@ -516,16 +485,7 @@ func (b *DiscordBot) handleSlashTest(
 			dbComment := db.Comment{Service: "nekobt", TorrentID: firstTorrent.ID, CommentID: lastComment.ID, Username: lastComment.DisplayName, Message: lastComment.Text, Timestamp: lastComment.CreatedAt / 1000, AvatarURL: avatarURL, ParentID: parentID, ParentMessage: lastComment.ParentText}
 
 			err := b.AnnounceNekoBTComment(i.ChannelID, dbTorrent, dbComment, "", false, false, false)
-			if err != nil {
-				b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ Error creating test embed: %v", err))
-			} else {
-				mentions := b.ResolveMentionsPlain(dbComment.Message, false)
-				msg := fmt.Sprintf("✅ Test successful! Sent most recent comment from **%s**.", firstTorrent.Title)
-				if mentions != "" {
-					msg += fmt.Sprintf(" Mentions found: `%s`", mentions)
-				}
-				b.sendFollowupMessage(s, i.Interaction, msg)
-			}
+			b.handleTestAnnounceResult(s, i, err, dbComment.Message, firstTorrent.Title)
 			return
 		}
 	} else if service == "tsukihime" {
@@ -582,16 +542,7 @@ func (b *DiscordBot) handleSlashTest(
 			dbComment := db.Comment{Service: "tsukihime", TorrentID: torrentIDStr, CommentID: firstComment.GetID(), Username: firstComment.GetDisplayName(), Message: firstComment.GetText(), Timestamp: ts, AvatarURL: avatarURL, ParentID: firstComment.GetParentID(), ParentMessage: firstComment.ParentText}
 
 			err = b.AnnounceTsukihimeComment(i.ChannelID, dbTorrent, dbComment, "", false, false, false)
-			if err != nil {
-				b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ Error creating test embed: %v", err))
-			} else {
-				mentions := b.ResolveMentionsPlain(dbComment.Message, false)
-				msg := fmt.Sprintf("✅ Test successful! Sent most recent comment from **%s**.", firstTorrent.Name)
-				if mentions != "" {
-					msg += fmt.Sprintf(" Mentions found: `%s`", mentions)
-				}
-				b.sendFollowupMessage(s, i.Interaction, msg)
-			}
+			b.handleTestAnnounceResult(s, i, err, dbComment.Message, firstTorrent.Name)
 			return
 		}
 
@@ -603,5 +554,24 @@ func (b *DiscordBot) handleSlashTest(
 			sb.WriteString(fmt.Sprintf("- **%s** (ID: %d)\n", t.Name, t.ID))
 		}
 		b.sendFollowupMessage(s, i.Interaction, sb.String())
+	}
+}
+
+func (b *DiscordBot) handleTestAnnounceResult(
+	s *discordgo.Session,
+	i *discordgo.InteractionCreate,
+	err error,
+	commentMsg string,
+	torrentTitle string,
+) {
+	if err != nil {
+		b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ Error creating test embed: %v", err))
+	} else {
+		mentions := b.ResolveMentionsPlain(commentMsg, false)
+		msg := fmt.Sprintf("✅ Test successful! Sent most recent comment from **%s**.", torrentTitle)
+		if mentions != "" {
+			msg += fmt.Sprintf(" Mentions found: `%s`", mentions)
+		}
+		b.sendFollowupMessage(s, i.Interaction, msg)
 	}
 }

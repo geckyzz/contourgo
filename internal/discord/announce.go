@@ -33,6 +33,24 @@ func (b *DiscordBot) EnqueueAnnouncement(
 	)
 }
 
+func (b *DiscordBot) sendAnnouncementEmbed(
+	channelID string,
+	logMsg string,
+	commentMsg string,
+	mentionsDisable bool,
+	embed *discordgo.MessageEmbed,
+) error {
+	log.Println(logMsg)
+	content := b.GetMentionsForText(commentMsg, mentionsDisable)
+	_, err := b.Session.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
+		Content: content,
+		Embeds: []*discordgo.MessageEmbed{
+			embed,
+		},
+	})
+	return err
+}
+
 func trimDescription(s string) string {
 	if len(s) > 4096 {
 		return s[:4093] + "..."
@@ -178,19 +196,12 @@ func (b *DiscordBot) AnnounceNyaaComment(
 		resolveUserContentImage,
 	)
 
-	log.Printf(
+	logMsg := fmt.Sprintf(
 		"[POST] Sending Nyaa/Sukebei Announcement embed to channel %s for torrent '%s'",
 		channelID,
 		torrent.Title,
 	)
-	content := b.GetMentionsForText(comment.Message, mentionsDisable)
-	_, err := b.Session.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
-		Content: content,
-		Embeds: []*discordgo.MessageEmbed{
-			embed,
-		},
-	})
-	return err
+	return b.sendAnnouncementEmbed(channelID, logMsg, comment.Message, mentionsDisable, embed)
 }
 
 func (b *DiscordBot) BuildATEmbed(
@@ -300,19 +311,12 @@ func (b *DiscordBot) AnnounceATComment(
 
 	embed := b.BuildATEmbed(service, torrent, comment, showCommentID, resolveUserContentImage)
 
-	log.Printf(
+	logMsg := fmt.Sprintf(
 		"[POST] Sending AnimeTosho Announcement embed to channel %s for torrent '%s'",
 		channelID,
 		torrent.Title,
 	)
-	content := b.GetMentionsForText(comment.Message, mentionsDisable)
-	_, err := b.Session.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
-		Content: content,
-		Embeds: []*discordgo.MessageEmbed{
-			embed,
-		},
-	})
-	return err
+	return b.sendAnnouncementEmbed(channelID, logMsg, comment.Message, mentionsDisable, embed)
 }
 
 func (b *DiscordBot) BuildNekoBTEmbed(
@@ -413,19 +417,12 @@ func (b *DiscordBot) AnnounceNekoBTComment(
 		parentText,
 	)
 
-	log.Printf(
+	logMsg := fmt.Sprintf(
 		"[POST] Announcing nekoBT comment on torrent '%s' to channel %s",
 		torrent.Title,
 		channelID,
 	)
-	content := b.GetMentionsForText(comment.Message, mentionsDisable)
-	_, err := b.Session.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
-		Content: content,
-		Embeds: []*discordgo.MessageEmbed{
-			embed,
-		},
-	})
-	return err
+	return b.sendAnnouncementEmbed(channelID, logMsg, comment.Message, mentionsDisable, embed)
 }
 
 func (b *DiscordBot) BuildTsukihimeEmbed(
@@ -521,19 +518,12 @@ func (b *DiscordBot) AnnounceTsukihimeComment(
 		parentText,
 	)
 
-	log.Printf(
+	logMsg := fmt.Sprintf(
 		"[POST] Announcing TsukiHime comment on torrent '%s' to channel %s",
 		torrent.Title,
 		channelID,
 	)
-	content := b.GetMentionsForText(comment.Message, mentionsDisable)
-	_, err := b.Session.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
-		Content: content,
-		Embeds: []*discordgo.MessageEmbed{
-			embed,
-		},
-	})
-	return err
+	return b.sendAnnouncementEmbed(channelID, logMsg, comment.Message, mentionsDisable, embed)
 }
 
 var nekoBTMentionRegex = regexp.MustCompile(`@([a-zA-Z0-9_-]+)`)
@@ -673,19 +663,12 @@ func (b *DiscordBot) AnnounceAnirenaComment(
 		resolveUserContentImage,
 	)
 
-	log.Printf(
+	logMsg := fmt.Sprintf(
 		"[POST] Sending AniRena Announcement embed to channel %s for torrent '%s'",
 		channelID,
 		torrent.Title,
 	)
-	content := b.GetMentionsForText(comment.Message, mentionsDisable)
-	_, err := b.Session.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
-		Content: content,
-		Embeds: []*discordgo.MessageEmbed{
-			embed,
-		},
-	})
-	return err
+	return b.sendAnnouncementEmbed(channelID, logMsg, comment.Message, mentionsDisable, embed)
 }
 
 var (
@@ -708,31 +691,40 @@ func urlPathEscape(s string) string {
 	return strings.ReplaceAll(url.PathEscape(s), "+", "%20")
 }
 
-func (b *DiscordBot) GetMentionsForText(text string, disabled bool) string {
+func (b *DiscordBot) findMatchedMentions(text string, disabled bool) map[string]string {
+	matched := make(map[string]string)
 	if disabled || b.Config.Discord.Mentions == nil {
+		return matched
+	}
+	cleanText := strings.ToLower(sanitizeForLookup(text))
+	for find, snowflakeAny := range b.Config.Discord.Mentions {
+		if strings.Contains(cleanText, "@"+strings.ToLower(find)) {
+			matched[find] = fmt.Sprintf("%v", snowflakeAny)
+		}
+	}
+	return matched
+}
+
+func (b *DiscordBot) GetMentionsForText(text string, disabled bool) string {
+	matched := b.findMatchedMentions(text, disabled)
+	if len(matched) == 0 {
 		return ""
 	}
 	var mentions []string
-	cleanText := strings.ToLower(sanitizeForLookup(text))
-	for find, snowflakeAny := range b.Config.Discord.Mentions {
-		snowflake := fmt.Sprintf("%v", snowflakeAny)
-		if strings.Contains(cleanText, "@"+strings.ToLower(find)) {
-			mentions = append(mentions, "<@"+snowflake+">")
-		}
+	for _, snowflake := range matched {
+		mentions = append(mentions, "<@"+snowflake+">")
 	}
 	return strings.Join(mentions, " ")
 }
 
 func (b *DiscordBot) ResolveMentionsPlain(text string, disabled bool) string {
-	if disabled || b.Config.Discord.Mentions == nil {
+	matched := b.findMatchedMentions(text, disabled)
+	if len(matched) == 0 {
 		return ""
 	}
 	var mentions []string
-	cleanText := strings.ToLower(sanitizeForLookup(text))
-	for find := range b.Config.Discord.Mentions {
-		if strings.Contains(cleanText, "@"+strings.ToLower(find)) {
-			mentions = append(mentions, find)
-		}
+	for find := range matched {
+		mentions = append(mentions, find)
 	}
 	return strings.Join(mentions, " ")
 }
