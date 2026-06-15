@@ -288,7 +288,11 @@ func (b *DiscordBot) BuildNekoBTEmbed(
 	parentText string,
 ) *discordgo.MessageEmbed {
 	baseTorrentURL := fmt.Sprintf("https://nekobt.to/torrents/%s", torrent.TorrentID)
-	jumpToCommentURL := fmt.Sprintf("https://nekobt.to/torrents/%s?com=%s", torrent.TorrentID, comment.CommentID)
+	jumpToCommentURL := fmt.Sprintf(
+		"https://nekobt.to/torrents/%s?com=%s",
+		torrent.TorrentID,
+		comment.CommentID,
+	)
 
 	description := resolveNekoBTMentions(comment.Message)
 
