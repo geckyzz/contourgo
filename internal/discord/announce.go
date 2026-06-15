@@ -245,6 +245,17 @@ func (b *DiscordBot) BuildATEmbed(
 		}
 	}
 
+	if comment.ParentID != "" && comment.ParentMessage != "" {
+		pText := comment.ParentMessage
+		if len(pText) > 1000 {
+			pText = pText[:997] + "..."
+		}
+		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
+			Name:  "↪️ Replying to",
+			Value: pText,
+		})
+	}
+
 	if resolveUserContentImage {
 		b.resolveEmbedImage(embed, comment.Message, "")
 	}

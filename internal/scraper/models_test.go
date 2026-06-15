@@ -99,7 +99,106 @@ func TestProcessMessageLinks(t *testing.T) {
 	if !strings.Contains(text, "https://example.com/project/abcdef1234567890abcdef1234567890") {
 		t.Errorf("expected text to contain the full restored URL, but got:\n%s", text)
 	}
-	if !strings.Contains(text, "[feedback page](https://animetosho.xyz/feedback?page=44#comment946)") {
+	if !strings.Contains(
+		text,
+		"[feedback page](https://animetosho.xyz/feedback?page=44#comment946)",
+	) {
 		t.Errorf("expected text to contain the markdown link, but got:\n%s", text)
 	}
+}
+
+func TestResolveATParent(t *testing.T) {
+	t.Run("New Layout (XYZ)", func(t *testing.T) {
+		const newLayoutHTML = `<div id="view_comments">
+			<div id="comment837192" class="comment comment-depth-0">
+				<div class="comment_user"><strong>Anonymous</strong> posted on 15/06/2026 04:27 UTC</div>
+				<div id="comment_body_837192">
+					<div class="comment_message">Lorem ipsum dolor sit amet, consectetur adipiscing elit.</div>
+				</div>
+			</div>
+			<div id="comment928374" class="comment2 comment-depth-1">
+				<div class="comment_user"><strong>Anonymous</strong> posted on 15/06/2026 11:42 UTC</div>
+				<div id="comment_body_928374">
+					<div class="comment_message">Sed do eiusmod tempor incididunt ut labore.</div>
+				</div>
+			</div>
+		</div>`
+
+		doc, err := goquery.NewDocumentFromReader(strings.NewReader(newLayoutHTML))
+		if err != nil {
+			t.Fatalf("failed to parse: %v", err)
+		}
+
+		// Comment 928374 is a child of 837192
+		pID, pText := ResolveATParent(doc, "928374")
+		if pID != "837192" {
+			t.Errorf("expected parent ID to be 837192, got %s", pID)
+		}
+		if pText != "Lorem ipsum dolor sit amet, consectetur adipiscing elit." {
+			t.Errorf("expected parent text, got %q", pText)
+		}
+
+		// Comment 837192 is root (no parent)
+		pID, pText = ResolveATParent(doc, "837192")
+		if pID != "" || pText != "" {
+			t.Errorf("expected no parent for 837192, got ID=%q, text=%q", pID, pText)
+		}
+	})
+
+	t.Run("Old Layout (ORG)", func(t *testing.T) {
+		const oldLayoutHTML = `<div id="view_comments_real">
+			<div id="view_comments">
+				<a id="comment748392"></a>
+				<div class="comment">
+					<div class="comment_user">18/02/2026 14:05 — <strong>Anonymous</strong></div>
+					<div id="comment_body_748392">
+						<div class="comment_message"><div class="user_message_c">Lorem ipsum dolor sit amet.</div></div>
+						<a id="comment837492"></a>
+						<div class="comment2">
+							<div class="comment_user">18/02/2026 14:15 — <strong>Anonymous</strong></div>
+							<div id="comment_body_837492">
+								<div class="comment_message"><div class="user_message_c">Consectetur adipiscing elit.</div></div>
+								<a id="comment928301"></a>
+								<div class="comment">
+									<div class="comment_user">18/02/2026 14:30 — <strong>Anonymous</strong></div>
+									<div id="comment_body_928301">
+										<div class="comment_message"><div class="user_message_c">Sed do eiusmod tempor.</div></div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>`
+
+		doc, err := goquery.NewDocumentFromReader(strings.NewReader(oldLayoutHTML))
+		if err != nil {
+			t.Fatalf("failed to parse: %v", err)
+		}
+
+		// 837492 is child of 748392
+		pID, pText := ResolveATParent(doc, "837492")
+		if pID != "748392" {
+			t.Errorf("expected parent ID to be 748392, got %s", pID)
+		}
+		if pText != "Lorem ipsum dolor sit amet." {
+			t.Errorf("expected parent text, got %q", pText)
+		}
+
+		// 928301 is child of 837492
+		pID, pText = ResolveATParent(doc, "928301")
+		if pID != "837492" {
+			t.Errorf("expected parent ID to be 837492, got %s", pID)
+		}
+		if pText != "Consectetur adipiscing elit." {
+			t.Errorf("expected parent text, got %q", pText)
+		}
+
+		// 748392 is root
+		pID, pText = ResolveATParent(doc, "748392")
+		if pID != "" || pText != "" {
+			t.Errorf("expected no parent for 748392, got ID=%q, text=%q", pID, pText)
+		}
+	})
 }

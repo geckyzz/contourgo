@@ -3,6 +3,7 @@ package scraper
 import (
 	"fmt"
 	"html"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -168,4 +169,114 @@ func processMessageLinks(messageDiv *goquery.Selection, baseURL string) {
 			aSel.ReplaceWithHtml(html.EscapeString(markdownLink))
 		}
 	})
+}
+
+func ResolveATParent(doc *goquery.Document, commentID string) (parentID string, parentText string) {
+	// 1. Try New Layout (XYZ)
+	var targetCommentIndex = -1
+	type commentItem struct {
+		id    string
+		depth int
+		text  string
+	}
+	var items []commentItem
+	doc.Find("#view_comments div.comment, #view_comments div.comment2").
+		Each(func(i int, sel *goquery.Selection) {
+			idAttr, _ := sel.Attr("id")
+			if !strings.HasPrefix(idAttr, "comment") {
+				return
+			}
+			id := strings.TrimPrefix(idAttr, "comment")
+
+			var d int
+			classes := sel.AttrOr("class", "")
+			for _, class := range strings.Fields(classes) {
+				if strings.HasPrefix(class, "comment-depth-") {
+					if val, err := strconv.Atoi(strings.TrimPrefix(class, "comment-depth-")); err == nil {
+						d = val
+						break
+					}
+				}
+			}
+
+			msgSel := sel.Find("div.comment_message")
+			msgSelCopy := msgSel.Clone()
+			msgSelCopy.Find("br").ReplaceWithHtml("\n")
+			msg := strings.TrimSpace(msgSelCopy.Text())
+
+			items = append(items, commentItem{
+				id:    id,
+				depth: d,
+				text:  msg,
+			})
+			if id == commentID {
+				targetCommentIndex = len(items) - 1
+			}
+		})
+
+	if targetCommentIndex != -1 {
+		targetDepth := items[targetCommentIndex].depth
+		if targetDepth > 0 {
+			for i := targetCommentIndex - 1; i >= 0; i-- {
+				if items[i].depth == targetDepth-1 {
+					return items[i].id, items[i].text
+				}
+			}
+		}
+		return "", ""
+	}
+
+	// 2. Try Old Layout (ORG)
+	bodySel := doc.Find(fmt.Sprintf("#comment_body_%s", commentID))
+	if bodySel.Length() > 0 {
+		curr := bodySel.Parent()
+		for {
+			curr = curr.Parent()
+			if curr.Length() == 0 {
+				break
+			}
+			var foundID string
+			curr.Children().Each(func(i int, child *goquery.Selection) {
+				idAttr, _ := child.Attr("id")
+				if strings.HasPrefix(idAttr, "comment_body_") {
+					foundID = strings.TrimPrefix(idAttr, "comment_body_")
+				}
+			})
+			if foundID != "" {
+				parentID = foundID
+				parentBodySel := curr.Find(fmt.Sprintf("#comment_body_%s", parentID))
+				msgSel := parentBodySel.Find("div.user_message_c").First()
+				msgSelCopy := msgSel.Clone()
+				msgSelCopy.Find("br").ReplaceWithHtml("\n")
+				parentText = strings.TrimSpace(msgSelCopy.Text())
+				return parentID, parentText
+			}
+		}
+	}
+
+	return "", ""
+}
+
+func ResolveParentInfo(client *http.Client, targetURL string, commentID string) (string, string) {
+	req, err := http.NewRequest("GET", targetURL, nil)
+	if err != nil {
+		return "", ""
+	}
+	req.Header.Set(
+		"User-Agent",
+		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+	)
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", ""
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", ""
+	}
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	if err != nil {
+		return "", ""
+	}
+	return ResolveATParent(doc, commentID)
 }

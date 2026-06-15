@@ -3,6 +3,7 @@ package monitor
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"strings"
 	"time"
 
@@ -203,6 +204,31 @@ func (m *Monitor) processATComments(
 			}
 
 			if !m.db.IsCommentStored(service, dbTorrentID, comment.ID) {
+				var parentID, parentMsg string
+				targetURL := "https://animetosho.org"
+				if service == "animetosho_new" {
+					targetURL = "https://animetosho.xyz"
+				}
+				if isFeedbackComment {
+					targetURL += "/feedback"
+				} else {
+					targetURL += "/view/" + comment.TorrentID
+				}
+
+				log.Printf(
+					"%s[%s] Fetching comment thread to resolve parent: %s",
+					prefix,
+					key,
+					targetURL,
+				)
+				client := &http.Client{
+					Timeout: 15 * time.Second,
+				}
+				parentID, parentMsg = scraper.ResolveParentInfo(client, targetURL, comment.ID)
+				if parentID != "" {
+					log.Printf("%s[%s] Resolved parent comment ID=%s", prefix, key, parentID)
+				}
+
 				m.db.UpdateTorrent(service, dbTorrentID, comment.Title, 1, comment.Timestamp, "")
 				m.db.StoreComment(
 					service,
@@ -214,8 +240,8 @@ func (m *Monitor) processATComments(
 					0,
 					"",
 					"",
-					"",
-					"",
+					parentID,
+					parentMsg,
 				)
 
 				m.enqueueAnnouncement(
