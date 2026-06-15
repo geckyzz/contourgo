@@ -62,7 +62,14 @@ func (b *DiscordBot) queueWorker() {
 				channelID,
 				a.RetryCount,
 			)
-			_, err = b.Session.ChannelMessageSendEmbed(channelID, embed)
+
+			content := b.GetMentionsForText(a.Comment.Message)
+			_, err = b.Session.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
+				Content: content,
+				Embeds: []*discordgo.MessageEmbed{
+					embed,
+				},
+			})
 			if err != nil {
 				log.Printf("[QUEUE] Error sending embed for ID %d: %v", a.ID, err)
 				b.DB.FailAnnouncement(a.ID, err.Error())

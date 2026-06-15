@@ -19,6 +19,7 @@ type Config struct {
 type DiscordConfig struct {
 	Token    string               `toml:"token"`
 	Server   string               `toml:"server"`
+	Mentions map[string]string    `toml:"mentions"`
 	Announce AnnounceConfig       `toml:"announce"`
 	Members  MembersConfig        `toml:"members"`
 	Embed    MonitorEmbedConfig   `toml:"embed"`

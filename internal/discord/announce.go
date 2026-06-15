@@ -179,7 +179,13 @@ func (b *DiscordBot) AnnounceNyaaComment(
 		channelID,
 		torrent.Title,
 	)
-	_, err := b.Session.ChannelMessageSendEmbed(channelID, embed)
+	content := b.GetMentionsForText(comment.Message)
+	_, err := b.Session.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
+		Content: content,
+		Embeds: []*discordgo.MessageEmbed{
+			embed,
+		},
+	})
 	return err
 }
 
@@ -293,7 +299,13 @@ func (b *DiscordBot) AnnounceATComment(
 		channelID,
 		torrent.Title,
 	)
-	_, err := b.Session.ChannelMessageSendEmbed(channelID, embed)
+	content := b.GetMentionsForText(comment.Message)
+	_, err := b.Session.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
+		Content: content,
+		Embeds: []*discordgo.MessageEmbed{
+			embed,
+		},
+	})
 	return err
 }
 
@@ -398,7 +410,13 @@ func (b *DiscordBot) AnnounceNekoBTComment(
 		torrent.Title,
 		channelID,
 	)
-	_, err := b.Session.ChannelMessageSendEmbed(channelID, embed)
+	content := b.GetMentionsForText(comment.Message)
+	_, err := b.Session.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
+		Content: content,
+		Embeds: []*discordgo.MessageEmbed{
+			embed,
+		},
+	})
 	return err
 }
 
@@ -498,7 +516,13 @@ func (b *DiscordBot) AnnounceTsukihimeComment(
 		torrent.Title,
 		channelID,
 	)
-	_, err := b.Session.ChannelMessageSendEmbed(channelID, embed)
+	content := b.GetMentionsForText(comment.Message)
+	_, err := b.Session.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
+		Content: content,
+		Embeds: []*discordgo.MessageEmbed{
+			embed,
+		},
+	})
 	return err
 }
 
@@ -642,12 +666,44 @@ func (b *DiscordBot) AnnounceAnirenaComment(
 		channelID,
 		torrent.Title,
 	)
-	_, err := b.Session.ChannelMessageSendEmbed(channelID, embed)
+	content := b.GetMentionsForText(comment.Message)
+	_, err := b.Session.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
+		Content: content,
+		Embeds: []*discordgo.MessageEmbed{
+			embed,
+		},
+	})
 	return err
 }
 
 func urlPathEscape(s string) string {
 	return strings.ReplaceAll(url.PathEscape(s), "+", "%20")
+}
+
+func (b *DiscordBot) GetMentionsForText(text string) string {
+	if b.Config.Discord.Mentions == nil {
+		return ""
+	}
+	var mentions []string
+	for find, snowflake := range b.Config.Discord.Mentions {
+		if strings.Contains(text, "@"+find) {
+			mentions = append(mentions, "<@"+snowflake+">")
+		}
+	}
+	return strings.Join(mentions, " ")
+}
+
+func (b *DiscordBot) ResolveMentionsPlain(text string) string {
+	if b.Config.Discord.Mentions == nil {
+		return ""
+	}
+	var mentions []string
+	for find := range b.Config.Discord.Mentions {
+		if strings.Contains(text, "@"+find) {
+			mentions = append(mentions, find)
+		}
+	}
+	return strings.Join(mentions, " ")
 }
 
 func trimField(s string) string {

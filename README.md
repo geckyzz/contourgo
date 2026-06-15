@@ -86,6 +86,7 @@ For initial database seeding without spamming Discord:
 | `discord.token`                      | Your Discord Bot Token                                  | (Required) |
 | `discord.server`                     | Target server snowflake for instant command sync        | (Optional) |
 | `discord.announce.channel`           | Discord channel snowflake for notifications             | (Required) |
+| `discord.mentions`                   | Map `@name` to `<@snowflake>` in message content        | (Optional) |
 | `discord.embed.author.url`           | Global default static icon for the embed author         | (Optional) |
 | `discord.fields.comment_id`          | Global default to toggle rendering comment ID           | `false`    |
 | `discord.display.user_content_image` | Global default to toggle extracting user content images | `false`    |
@@ -138,6 +139,19 @@ it will monitor general feedback comments instead of specific torrent comments.
 
 If you provide a keyword on feedback monitor, it will be matched against the comment message content
 (case-insensitive).
+
+#### Mention Mapping (`discord.mentions`)
+
+The bot can be configured to map specific strings found in comments (e.g., `@geckyzz`) to Discord user snowflakes.
+
+- **Announcement behavior**: If a mapped name is found in a comment, the bot will include the corresponding Discord mention in the message content (the text above the embed). This ensures the user is pinged. The original text inside the embed description remains unchanged.
+- **Verification**: The `/test` command will report any detected mentions in plain text to verify your configuration.
+
+**Configuration Example**:
+```toml
+[discord]
+mentions = { "geckyzz" = "123456789012345678", "cicak" = "876543210987654321" }
+```
 
 ---
 
