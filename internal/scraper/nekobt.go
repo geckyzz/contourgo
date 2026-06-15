@@ -22,9 +22,7 @@ func NewNekoBTScraper(apiKey string) *NekoBTScraper {
 	return &NekoBTScraper{
 		baseURL: "https://nekobt.to/api/v1",
 		apiKey:  apiKey,
-		client: &http.Client{
-			Timeout: 30 * time.Second,
-		},
+		client:  NewHTTPClient(30 * time.Second),
 	}
 }
 
@@ -32,7 +30,6 @@ func (s *NekoBTScraper) doRequest(req *http.Request) ([]byte, error) {
 	if s.apiKey != "" {
 		req.AddCookie(&http.Cookie{Name: "ssid", Value: s.apiKey})
 	}
-	req.Header.Set("User-Agent", "ContourGo/1.0")
 
 	for {
 		resp, err := s.client.Do(req)

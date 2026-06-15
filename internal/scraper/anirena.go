@@ -79,9 +79,7 @@ func NewAnirenaScraper(apiKey string) *AnirenaScraper {
 	return &AnirenaScraper{
 		baseURL: "https://www.anirena.com",
 		apiKey:  apiKey,
-		client: &http.Client{
-			Timeout: 15 * time.Second,
-		},
+		client:  NewHTTPClient(15 * time.Second),
 	}
 }
 

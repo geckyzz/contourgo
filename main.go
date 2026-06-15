@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"github.com/geckyzz/contourgo/internal/db"
 	"github.com/geckyzz/contourgo/internal/discord"
 	"github.com/geckyzz/contourgo/internal/monitor"
+	"github.com/geckyzz/contourgo/internal/scraper"
 	"github.com/mattn/go-isatty"
 )
 
@@ -65,6 +67,19 @@ func main() {
 	}
 	defer bot.Stop()
 	log.Println("Discord bot connected and running.")
+
+	// Set dynamic scraper details
+	scraper.BotIDSupplier = func() string {
+		if bot.Session != nil && bot.Session.State != nil && bot.Session.State.User != nil {
+			return bot.Session.State.User.ID
+		}
+		return ""
+	}
+	v, sha := discord.GetVersionInfo()
+	scraper.Version = v
+	scraper.CommitSHA = sha
+	owner, repo := discord.GetRepoInfo()
+	scraper.RepoURL = fmt.Sprintf("github.com/%s/%s", owner, repo)
 
 	// 4. Start Monitor Loop (in goroutine)
 	mon := monitor.NewMonitor(cfg, database, bot, forceCheckChan)

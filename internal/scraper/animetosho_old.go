@@ -19,9 +19,7 @@ type AnimeToshoOldScraper struct {
 func NewAnimeToshoOldScraper() *AnimeToshoOldScraper {
 	return &AnimeToshoOldScraper{
 		baseURL: "https://animetosho.org",
-		client: &http.Client{
-			Timeout: 30 * time.Second,
-		},
+		client:  NewHTTPClient(30 * time.Second),
 	}
 }
 

@@ -18,18 +18,11 @@ type TsukihimeScraper struct {
 func NewTsukihimeScraper() *TsukihimeScraper {
 	return &TsukihimeScraper{
 		baseURL: "https://api.tsukihime.org",
-		client: &http.Client{
-			Timeout: 30 * time.Second,
-		},
+		client:  NewHTTPClient(30 * time.Second),
 	}
 }
 
 func (s *TsukihimeScraper) doRequest(req *http.Request) ([]byte, error) {
-	req.Header.Set(
-		"User-Agent",
-		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-	)
-
 	resp, err := s.client.Do(req)
 	if err != nil {
 		return nil, err

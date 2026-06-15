@@ -18,9 +18,7 @@ func NewNyaaScraper(proxyURL string, site string) *NyaaScraper {
 	return &NyaaScraper{
 		proxyURL: proxyURL,
 		site:     site,
-		client: &http.Client{
-			Timeout: 15 * time.Second,
-		},
+		client:   NewHTTPClient(15 * time.Second),
 	}
 }
 
