@@ -214,6 +214,13 @@ func (b *DiscordBot) BuildATEmbed(
 		embedColor = 0x4d4d4d
 	}
 
+	footerText := "AnimeTosho Comments"
+	if strings.HasPrefix(service, "animetosho_new") {
+		footerText = "AnimeTosho New Comments"
+	} else if strings.HasPrefix(service, "animetosho_old") {
+		footerText = "AnimeTosho Beta Comments"
+	}
+
 	embed := &discordgo.MessageEmbed{
 		Title:       trimField(comment.Username),
 		URL:         commentURL,
@@ -224,7 +231,7 @@ func (b *DiscordBot) BuildATEmbed(
 			URL:  torrentURL,
 		},
 		Footer: &discordgo.MessageEmbedFooter{
-			Text: "AnimeTosho Comments",
+			Text: footerText,
 		},
 	}
 
