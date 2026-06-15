@@ -676,6 +676,22 @@ func (b *DiscordBot) AnnounceAnirenaComment(
 	return err
 }
 
+var (
+	htmlTagRegex  = regexp.MustCompile(`<[^>]*>`)
+	mdLinkRegex   = regexp.MustCompile(`\[([^\]]+)\]\([^)]+\)`)
+	mdFormatRegex = regexp.MustCompile(`[*_~` + "`" + `]+`)
+)
+
+func sanitizeForLookup(text string) string {
+	// 1. Markdown links: [text](url) -> text
+	text = mdLinkRegex.ReplaceAllString(text, "$1")
+	// 2. HTML tags: <... text ...> -> remove tags
+	text = htmlTagRegex.ReplaceAllString(text, "")
+	// 3. Remove common markdown formatting characters
+	text = mdFormatRegex.ReplaceAllString(text, "")
+	return text
+}
+
 func urlPathEscape(s string) string {
 	return strings.ReplaceAll(url.PathEscape(s), "+", "%20")
 }
@@ -685,10 +701,10 @@ func (b *DiscordBot) GetMentionsForText(text string) string {
 		return ""
 	}
 	var mentions []string
-	lowerText := strings.ToLower(text)
+	cleanText := strings.ToLower(sanitizeForLookup(text))
 	for find, snowflakeAny := range b.Config.Discord.Mentions {
 		snowflake := fmt.Sprintf("%v", snowflakeAny)
-		if strings.Contains(lowerText, "@"+strings.ToLower(find)) {
+		if strings.Contains(cleanText, "@"+strings.ToLower(find)) {
 			mentions = append(mentions, "<@"+snowflake+">")
 		}
 	}
@@ -700,9 +716,9 @@ func (b *DiscordBot) ResolveMentionsPlain(text string) string {
 		return ""
 	}
 	var mentions []string
-	lowerText := strings.ToLower(text)
+	cleanText := strings.ToLower(sanitizeForLookup(text))
 	for find := range b.Config.Discord.Mentions {
-		if strings.Contains(lowerText, "@"+strings.ToLower(find)) {
+		if strings.Contains(cleanText, "@"+strings.ToLower(find)) {
 			mentions = append(mentions, find)
 		}
 	}
