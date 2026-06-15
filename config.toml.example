@@ -28,6 +28,7 @@ sort = "comments" # comments, size, id, seeders, leechers, downloads
 order = "desc"    # desc, asc
 page.max = 0
 discord.embed.author.url = "https://i.imgur.com/some-nyaa-image.png"
+discord.mentions.disable = true # Set to true to disable all pings for this monitor
 discord.fields.comment_id = false
 discord.display.user_content_image = false
 

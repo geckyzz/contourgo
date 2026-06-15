@@ -104,6 +104,7 @@ You can define multiple monitors per service.
 | :----------------------------------- | :---------------------------------------------------------------------- | :---------------------------- |
 | `keywords`                           | List of search strings                                                  | All                           |
 | `excludes`                           | List of glob patterns to skip                                           | All                           |
+| `discord.mentions.disable`           | Toggle to disable all pings for this monitor                            | All                           |
 | `uploaders`                          | List of uploader usernames or IDs                                       | Nyaa/Sukebei, nekoBT, AniRena |
 | `groups`                             | List of Group IDs or Group Slugs                                        | nekoBT, AniRena, TsukiHime    |
 | `media`                              | List of Media IDs                                                       | nekoBT, TsukiHime             |
@@ -145,6 +146,7 @@ If you provide a keyword on feedback monitor, it will be matched against the com
 The bot can be configured to map specific strings found in comments (e.g., `@geckyzz`) to Discord user snowflakes. **Mapping is case-insensitive.**
 
 - **Announcement behavior**: If a mapped name is found in a comment (e.g., `@Geckyzz` or `@geckyzz`), the bot will include the corresponding Discord mention in the message content (the text above the embed). This ensures the user is pinged. The original text inside the embed description remains unchanged.
+- **Monitor-specific toggle**: You can use `discord.mentions.disable = true` in a monitor block to completely suppress pings for that specific monitor.
 - **Verification**: The `/test` command will report any detected mentions in plain text to verify your configuration.
 
 **Configuration Example**:

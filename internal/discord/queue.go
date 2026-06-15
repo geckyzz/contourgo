@@ -63,7 +63,7 @@ func (b *DiscordBot) queueWorker() {
 				a.RetryCount,
 			)
 
-			content := b.GetMentionsForText(a.Comment.Message)
+			content := b.GetMentionsForText(a.Comment.Message, a.MentionsDisable)
 			_, err = b.Session.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
 				Content: content,
 				Embeds: []*discordgo.MessageEmbed{

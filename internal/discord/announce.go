@@ -16,6 +16,7 @@ import (
 func (b *DiscordBot) EnqueueAnnouncement(
 	service, channelID, torrentID, commentID, authorIconURL string,
 	showCommentID, resolveImage bool,
+	mentionsDisable bool,
 ) error {
 	if channelID == "" {
 		channelID = b.AnnounceChannel
@@ -28,6 +29,7 @@ func (b *DiscordBot) EnqueueAnnouncement(
 		authorIconURL,
 		showCommentID,
 		resolveImage,
+		mentionsDisable,
 	)
 }
 
@@ -152,6 +154,7 @@ func (b *DiscordBot) AnnounceNyaaComment(
 	authorIconURL string,
 	showCommentID bool,
 	resolveUserContentImage bool,
+	mentionsDisable bool,
 ) error {
 	if channelID == "" {
 		return b.EnqueueAnnouncement(
@@ -162,6 +165,7 @@ func (b *DiscordBot) AnnounceNyaaComment(
 			authorIconURL,
 			showCommentID,
 			resolveUserContentImage,
+			mentionsDisable,
 		)
 	}
 
@@ -179,7 +183,7 @@ func (b *DiscordBot) AnnounceNyaaComment(
 		channelID,
 		torrent.Title,
 	)
-	content := b.GetMentionsForText(comment.Message)
+	content := b.GetMentionsForText(comment.Message, mentionsDisable)
 	_, err := b.Session.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
 		Content: content,
 		Embeds: []*discordgo.MessageEmbed{
@@ -279,6 +283,7 @@ func (b *DiscordBot) AnnounceATComment(
 	authorIconURL string,
 	showCommentID bool,
 	resolveUserContentImage bool,
+	mentionsDisable bool,
 ) error {
 	if channelID == "" {
 		return b.EnqueueAnnouncement(
@@ -289,6 +294,7 @@ func (b *DiscordBot) AnnounceATComment(
 			authorIconURL,
 			showCommentID,
 			resolveUserContentImage,
+			mentionsDisable,
 		)
 	}
 
@@ -299,7 +305,7 @@ func (b *DiscordBot) AnnounceATComment(
 		channelID,
 		torrent.Title,
 	)
-	content := b.GetMentionsForText(comment.Message)
+	content := b.GetMentionsForText(comment.Message, mentionsDisable)
 	_, err := b.Session.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
 		Content: content,
 		Embeds: []*discordgo.MessageEmbed{
@@ -376,6 +382,7 @@ func (b *DiscordBot) AnnounceNekoBTComment(
 	authorIconURL string,
 	showCommentID bool,
 	resolveUserContentImage bool,
+	mentionsDisable bool,
 ) error {
 	if channelID == "" {
 		return b.EnqueueAnnouncement(
@@ -386,6 +393,7 @@ func (b *DiscordBot) AnnounceNekoBTComment(
 			authorIconURL,
 			showCommentID,
 			resolveUserContentImage,
+			mentionsDisable,
 		)
 	}
 
@@ -410,7 +418,7 @@ func (b *DiscordBot) AnnounceNekoBTComment(
 		torrent.Title,
 		channelID,
 	)
-	content := b.GetMentionsForText(comment.Message)
+	content := b.GetMentionsForText(comment.Message, mentionsDisable)
 	_, err := b.Session.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
 		Content: content,
 		Embeds: []*discordgo.MessageEmbed{
@@ -482,6 +490,7 @@ func (b *DiscordBot) AnnounceTsukihimeComment(
 	authorIconURL string,
 	showCommentID bool,
 	resolveUserContentImage bool,
+	mentionsDisable bool,
 ) error {
 	if channelID == "" {
 		return b.EnqueueAnnouncement(
@@ -492,6 +501,7 @@ func (b *DiscordBot) AnnounceTsukihimeComment(
 			authorIconURL,
 			showCommentID,
 			resolveUserContentImage,
+			mentionsDisable,
 		)
 	}
 
@@ -516,7 +526,7 @@ func (b *DiscordBot) AnnounceTsukihimeComment(
 		torrent.Title,
 		channelID,
 	)
-	content := b.GetMentionsForText(comment.Message)
+	content := b.GetMentionsForText(comment.Message, mentionsDisable)
 	_, err := b.Session.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
 		Content: content,
 		Embeds: []*discordgo.MessageEmbed{
@@ -640,6 +650,7 @@ func (b *DiscordBot) AnnounceAnirenaComment(
 	authorIconURL string,
 	showCommentID bool,
 	resolveUserContentImage bool,
+	mentionsDisable bool,
 ) error {
 	if channelID == "" {
 		return b.EnqueueAnnouncement(
@@ -650,6 +661,7 @@ func (b *DiscordBot) AnnounceAnirenaComment(
 			authorIconURL,
 			showCommentID,
 			resolveUserContentImage,
+			mentionsDisable,
 		)
 	}
 
@@ -666,7 +678,7 @@ func (b *DiscordBot) AnnounceAnirenaComment(
 		channelID,
 		torrent.Title,
 	)
-	content := b.GetMentionsForText(comment.Message)
+	content := b.GetMentionsForText(comment.Message, mentionsDisable)
 	_, err := b.Session.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
 		Content: content,
 		Embeds: []*discordgo.MessageEmbed{
@@ -696,8 +708,8 @@ func urlPathEscape(s string) string {
 	return strings.ReplaceAll(url.PathEscape(s), "+", "%20")
 }
 
-func (b *DiscordBot) GetMentionsForText(text string) string {
-	if b.Config.Discord.Mentions == nil {
+func (b *DiscordBot) GetMentionsForText(text string, disabled bool) string {
+	if disabled || b.Config.Discord.Mentions == nil {
 		return ""
 	}
 	var mentions []string
@@ -711,8 +723,8 @@ func (b *DiscordBot) GetMentionsForText(text string) string {
 	return strings.Join(mentions, " ")
 }
 
-func (b *DiscordBot) ResolveMentionsPlain(text string) string {
-	if b.Config.Discord.Mentions == nil {
+func (b *DiscordBot) ResolveMentionsPlain(text string, disabled bool) string {
+	if disabled || b.Config.Discord.Mentions == nil {
 		return ""
 	}
 	var mentions []string

@@ -191,6 +191,7 @@ func (b *DiscordBot) handleSlashTest(
 				"",
 				false,
 				false,
+				false,
 			)
 			if err != nil {
 				b.sendFollowupMessage(
@@ -199,7 +200,7 @@ func (b *DiscordBot) handleSlashTest(
 					fmt.Sprintf("❌ Error creating test embed: %v", err),
 				)
 			} else {
-				mentions := b.ResolveMentionsPlain(dbComment.Message)
+				mentions := b.ResolveMentionsPlain(dbComment.Message, false)
 				msg := fmt.Sprintf("✅ Test successful! Sent most recent comment from **%s**.", targetTorrent.Name)
 				if mentions != "" {
 					msg += fmt.Sprintf(" Mentions found: `%s`", mentions)
@@ -302,11 +303,11 @@ func (b *DiscordBot) handleSlashTest(
 			dbTorrent := db.Torrent{Service: service, TorrentID: firstComment.TorrentID, Title: firstComment.Title}
 			dbComment := db.Comment{Service: service, TorrentID: firstComment.TorrentID, CommentID: firstComment.ID, Username: firstComment.Username, Message: firstComment.Message, Timestamp: firstComment.Timestamp}
 
-			err := b.AnnounceATComment(i.ChannelID, service, dbTorrent, dbComment, "", false, false)
+			err := b.AnnounceATComment(i.ChannelID, service, dbTorrent, dbComment, "", false, false, false)
 			if err != nil {
 				b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ Error creating test embed: %v", err))
 			} else {
-				mentions := b.ResolveMentionsPlain(dbComment.Message)
+				mentions := b.ResolveMentionsPlain(dbComment.Message, false)
 				msg := fmt.Sprintf("✅ Test successful! Sent most recent comment from **%s**.", firstComment.Title)
 				if mentions != "" {
 					msg += fmt.Sprintf(" Mentions found: `%s`", mentions)
@@ -420,11 +421,11 @@ func (b *DiscordBot) handleSlashTest(
 			dbTorrent := db.Torrent{Service: "anirena", TorrentID: targetTorrent.ID, Title: targetTorrent.FullTitle(), Uploader: targetTorrent.Uploader}
 			dbComment := db.Comment{Service: "anirena", TorrentID: targetTorrent.ID, CommentID: firstComment.ID, Username: firstComment.Username, Message: firstComment.Body, Timestamp: ts, UserRole: firstComment.Role}
 
-			err = b.AnnounceAnirenaComment(i.Interaction.ChannelID, dbTorrent, dbComment, "", false, false)
+			err = b.AnnounceAnirenaComment(i.Interaction.ChannelID, dbTorrent, dbComment, "", false, false, false)
 			if err != nil {
 				b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ Error creating test embed: %v", err))
 			} else {
-				mentions := b.ResolveMentionsPlain(dbComment.Message)
+				mentions := b.ResolveMentionsPlain(dbComment.Message, false)
 				msg := fmt.Sprintf("✅ Test successful! Sent most recent comment from **%s**.", targetTorrent.FullTitle())
 				if mentions != "" {
 					msg += fmt.Sprintf(" Mentions found: `%s`", mentions)
@@ -514,11 +515,11 @@ func (b *DiscordBot) handleSlashTest(
 			}
 			dbComment := db.Comment{Service: "nekobt", TorrentID: firstTorrent.ID, CommentID: lastComment.ID, Username: lastComment.DisplayName, Message: lastComment.Text, Timestamp: lastComment.CreatedAt / 1000, AvatarURL: avatarURL, ParentID: parentID, ParentMessage: lastComment.ParentText}
 
-			err := b.AnnounceNekoBTComment(i.ChannelID, dbTorrent, dbComment, "", false, false)
+			err := b.AnnounceNekoBTComment(i.ChannelID, dbTorrent, dbComment, "", false, false, false)
 			if err != nil {
 				b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ Error creating test embed: %v", err))
 			} else {
-				mentions := b.ResolveMentionsPlain(dbComment.Message)
+				mentions := b.ResolveMentionsPlain(dbComment.Message, false)
 				msg := fmt.Sprintf("✅ Test successful! Sent most recent comment from **%s**.", firstTorrent.Title)
 				if mentions != "" {
 					msg += fmt.Sprintf(" Mentions found: `%s`", mentions)
@@ -580,11 +581,11 @@ func (b *DiscordBot) handleSlashTest(
 			}
 			dbComment := db.Comment{Service: "tsukihime", TorrentID: torrentIDStr, CommentID: firstComment.GetID(), Username: firstComment.GetDisplayName(), Message: firstComment.GetText(), Timestamp: ts, AvatarURL: avatarURL, ParentID: firstComment.GetParentID(), ParentMessage: firstComment.ParentText}
 
-			err = b.AnnounceTsukihimeComment(i.ChannelID, dbTorrent, dbComment, "", false, false)
+			err = b.AnnounceTsukihimeComment(i.ChannelID, dbTorrent, dbComment, "", false, false, false)
 			if err != nil {
 				b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ Error creating test embed: %v", err))
 			} else {
-				mentions := b.ResolveMentionsPlain(dbComment.Message)
+				mentions := b.ResolveMentionsPlain(dbComment.Message, false)
 				msg := fmt.Sprintf("✅ Test successful! Sent most recent comment from **%s**.", firstTorrent.Name)
 				if mentions != "" {
 					msg += fmt.Sprintf(" Mentions found: `%s`", mentions)

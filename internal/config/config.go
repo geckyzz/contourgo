@@ -113,9 +113,14 @@ type PageConfig struct {
 }
 
 type MonitorDiscordConfig struct {
-	Embed   MonitorEmbedConfig   `toml:"embed"`
-	Fields  MonitorFieldsConfig  `toml:"fields"`
-	Display MonitorDisplayConfig `toml:"display"`
+	Mentions MonitorMentionsConfig `toml:"mentions"`
+	Embed    MonitorEmbedConfig    `toml:"embed"`
+	Fields   MonitorFieldsConfig   `toml:"fields"`
+	Display  MonitorDisplayConfig  `toml:"display"`
+}
+
+type MonitorMentionsConfig struct {
+	Disable bool `toml:"disable"`
 }
 
 type MonitorDisplayConfig struct {

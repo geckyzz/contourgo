@@ -166,19 +166,21 @@ type Comment struct {
 }
 
 type QueuedAnnouncement struct {
-	ID            int
-	Service       string
-	ChannelID     string
-	TorrentID     string
-	CommentID     string
-	AuthorIconURL string
-	ShowCommentID bool
-	ResolveImage  bool
-	RetryCount    int
-	LastError     string
-	CreatedAt     time.Time
+	ID              int
+	Service         string
+	ChannelID       string
+	TorrentID       string
+	CommentID       string
+	AuthorIconURL   string
+	ShowCommentID   bool
+	ResolveImage    bool
+	RetryCount      int
+	LastError       string
+	CreatedAt       time.Time
+	MentionsDisable bool
 
 	// Joined data
+
 	Torrent Torrent
 	Comment Comment
 }
@@ -186,13 +188,14 @@ type QueuedAnnouncement struct {
 func (db *DB) EnqueueAnnouncement(
 	service, channelID, torrentID, commentID, authorIconURL string,
 	showCommentID, resolveImage bool,
+	mentionsDisable bool,
 ) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 	_, err := db.Conn.Exec(`
-		INSERT INTO announcement_queue (service, channel_id, torrent_id, comment_id, author_icon_url, show_comment_id, resolve_image)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
-	`, service, channelID, torrentID, commentID, authorIconURL, showCommentID, resolveImage)
+		INSERT INTO announcement_queue (service, channel_id, torrent_id, comment_id, author_icon_url, show_comment_id, resolve_image, mentions_disabled)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+	`, service, channelID, torrentID, commentID, authorIconURL, showCommentID, resolveImage, mentionsDisable)
 	return err
 }
 
@@ -202,7 +205,7 @@ func (db *DB) GetPendingAnnouncements() ([]QueuedAnnouncement, error) {
 	rows, err := db.Conn.Query(`
 		SELECT 
 			q.id, q.service, q.channel_id, q.torrent_id, q.comment_id, COALESCE(q.author_icon_url, ''), q.show_comment_id, q.resolve_image, 
-			COALESCE(q.retry_count, 0), COALESCE(q.last_error, ''), q.created_at,
+			COALESCE(q.retry_count, 0), COALESCE(q.last_error, ''), q.created_at, COALESCE(q.mentions_disabled, FALSE),
 			COALESCE(t.title, ''), COALESCE(t.uploaded_at, 0), COALESCE(t.uploader, ''), COALESCE(t.comment_count, 0), t.last_scraped_at,
 			COALESCE(c.username, ''), COALESCE(c.message, ''), COALESCE(c.timestamp, 0), COALESCE(c.position, 0), 
 			COALESCE(c.user_role, ''), COALESCE(c.avatar_url, ''), COALESCE(c.parent_id, ''), COALESCE(c.parent_message, '')
@@ -233,6 +236,7 @@ func (db *DB) GetPendingAnnouncements() ([]QueuedAnnouncement, error) {
 			&a.RetryCount,
 			&a.LastError,
 			&a.CreatedAt,
+			&a.MentionsDisable,
 			&a.Torrent.Title,
 			&a.Torrent.UploadedAt,
 			&a.Torrent.Uploader,
