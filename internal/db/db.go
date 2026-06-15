@@ -57,15 +57,42 @@ func (db *DB) GetStoredCommentCount(service, torrentID string) (int, bool) {
 	return count, true
 }
 
-func (db *DB) UpdateTorrent(
+type dbConn interface {
+	Exec(query string, args ...any) (sql.Result, error)
+}
+
+func (db *DB) WithTx(fn func(*sql.Tx) error) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	tx, err := db.Conn.Begin()
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if p := recover(); p != nil {
+			_ = tx.Rollback()
+			panic(p)
+		}
+	}()
+
+	if err := fn(tx); err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func updateTorrent(
+	conn dbConn,
 	service, torrentID, title string,
 	count int,
 	uploadedAt int64,
 	uploader string,
 ) error {
-	db.mu.Lock()
-	defer db.mu.Unlock()
-	_, err := db.Conn.Exec(`
+	_, err := conn.Exec(`
 		INSERT INTO torrents (service, torrent_id, title, comment_count, uploaded_at, uploader, last_scraped_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(service, torrent_id) DO UPDATE SET
@@ -76,6 +103,27 @@ func (db *DB) UpdateTorrent(
 			last_scraped_at = excluded.last_scraped_at
 	`, service, torrentID, title, count, uploadedAt, uploader, time.Now())
 	return err
+}
+
+func (db *DB) UpdateTorrent(
+	service, torrentID, title string,
+	count int,
+	uploadedAt int64,
+	uploader string,
+) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	return updateTorrent(db.Conn, service, torrentID, title, count, uploadedAt, uploader)
+}
+
+func (db *DB) UpdateTorrentTx(
+	tx *sql.Tx,
+	service, torrentID, title string,
+	count int,
+	uploadedAt int64,
+	uploader string,
+) error {
+	return updateTorrent(tx, service, torrentID, title, count, uploadedAt, uploader)
 }
 
 func (db *DB) IsCommentStored(service, torrentID, commentID string) bool {
@@ -89,6 +137,20 @@ func (db *DB) IsCommentStored(service, torrentID, commentID string) bool {
 	return err == nil
 }
 
+func storeComment(
+	conn dbConn,
+	service, torrentID, commentID, username, message string,
+	timestamp int64,
+	position int,
+	role, avatarURL, parentID, parentMessage string,
+) error {
+	_, err := conn.Exec(`
+		INSERT OR IGNORE INTO comments (service, torrent_id, comment_id, username, message, timestamp, position, user_role, avatar_url, parent_id, parent_message)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, service, torrentID, commentID, username, message, timestamp, position, role, avatarURL, parentID, parentMessage)
+	return err
+}
+
 func (db *DB) StoreComment(
 	service, torrentID, commentID, username, message string,
 	timestamp int64,
@@ -97,11 +159,43 @@ func (db *DB) StoreComment(
 ) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
-	_, err := db.Conn.Exec(`
-		INSERT OR IGNORE INTO comments (service, torrent_id, comment_id, username, message, timestamp, position, user_role, avatar_url, parent_id, parent_message)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, service, torrentID, commentID, username, message, timestamp, position, role, avatarURL, parentID, parentMessage)
-	return err
+	return storeComment(
+		db.Conn,
+		service,
+		torrentID,
+		commentID,
+		username,
+		message,
+		timestamp,
+		position,
+		role,
+		avatarURL,
+		parentID,
+		parentMessage,
+	)
+}
+
+func (db *DB) StoreCommentTx(
+	tx *sql.Tx,
+	service, torrentID, commentID, username, message string,
+	timestamp int64,
+	position int,
+	role, avatarURL, parentID, parentMessage string,
+) error {
+	return storeComment(
+		tx,
+		service,
+		torrentID,
+		commentID,
+		username,
+		message,
+		timestamp,
+		position,
+		role,
+		avatarURL,
+		parentID,
+		parentMessage,
+	)
 }
 
 func (db *DB) GetComment(service, torrentID, commentID string) (Comment, bool) {

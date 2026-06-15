@@ -1,6 +1,7 @@
 package discord
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -113,33 +114,48 @@ func (b *DiscordBot) handleSlashImport(
 	importedTorrents := 0
 	importedComments := 0
 
-	for torrentID, comments := range oldData {
-		count := len(comments)
-		title := fmt.Sprintf("Imported Torrent %s", torrentID)
+	err = b.DB.WithTx(func(tx *sql.Tx) error {
+		for torrentID, comments := range oldData {
+			count := len(comments)
+			title := fmt.Sprintf("Imported Torrent %s", torrentID)
 
-		err = b.DB.UpdateTorrent(service, torrentID, title, count, 0, "")
-		if err != nil {
-			continue
-		}
-		importedTorrents++
+			if err := b.DB.UpdateTorrentTx(tx, service, torrentID, title, count, 0, ""); err != nil {
+				return err
+			}
+			importedTorrents++
 
-		for _, c := range comments {
-			commentIDStr := strconv.Itoa(c.ID)
-			b.DB.StoreComment(
-				service,
-				torrentID,
-				commentIDStr,
-				c.User.Username,
-				c.Message,
-				c.Timestamp,
-				c.Pos,
-				"",
-				c.User.Image,
-				"",
-				"",
-			)
-			importedComments++
+			for _, c := range comments {
+				commentIDStr := strconv.Itoa(c.ID)
+				err = b.DB.StoreCommentTx(
+					tx,
+					service,
+					torrentID,
+					commentIDStr,
+					c.User.Username,
+					c.Message,
+					c.Timestamp,
+					c.Pos,
+					"",
+					c.User.Image,
+					"",
+					"",
+				)
+				if err != nil {
+					return err
+				}
+				importedComments++
+			}
 		}
+		return nil
+	})
+
+	if err != nil {
+		b.sendFollowupMessage(
+			s,
+			i.Interaction,
+			fmt.Sprintf("❌ Failed to import database transaction: %v", err),
+		)
+		return
 	}
 
 	b.sendFollowupMessage(
