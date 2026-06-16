@@ -45,7 +45,7 @@ func (m *Monitor) checkNekoBT(force bool) {
 		}
 
 		params := url.Values{}
-		params.Set("sort", sort)
+		params.Set("sort_by", sort)
 		params.Set("limit", "50")
 
 		if len(monitorCfg.Keywords) > 0 {
