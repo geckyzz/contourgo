@@ -169,6 +169,10 @@ func (s *TsukihimeScraper) FetchLatestComments(limit int, offset int) (*Tsukihim
 		return nil, err
 	}
 
+	for i := range resp.Comments {
+		resp.Comments[i].Unescape()
+	}
+
 	return &resp, nil
 }
 
@@ -192,6 +196,10 @@ func (s *TsukihimeScraper) FetchTorrentsByAnime(
 		return nil, err
 	}
 
+	for i := range resp.Results {
+		resp.Results[i].Unescape()
+	}
+
 	return resp.Results, nil
 }
 
@@ -213,6 +221,10 @@ func (s *TsukihimeScraper) FetchTorrentsByGroup(
 	}
 	if err := json.Unmarshal(body, &resp); err != nil {
 		return nil, err
+	}
+
+	for i := range resp.Results {
+		resp.Results[i].Unescape()
 	}
 
 	return resp.Results, nil
@@ -263,6 +275,10 @@ func (s *TsukihimeScraper) SearchTorrents(
 		return nil, err
 	}
 
+	for i := range resp.Results {
+		resp.Results[i].Unescape()
+	}
+
 	return resp.Results, nil
 }
 
@@ -309,6 +325,8 @@ func (s *TsukihimeScraper) FetchTorrentDetails(torrentID string) (*TsukihimeTorr
 	if err := json.Unmarshal(body, &details); err != nil {
 		return nil, err
 	}
+
+	details.Unescape()
 
 	return &details, nil
 }

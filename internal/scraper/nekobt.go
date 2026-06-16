@@ -101,6 +101,10 @@ func (s *NekoBTScraper) SearchTorrents(params url.Values) ([]NekoBTTorrent, erro
 		return nil, err
 	}
 
+	for i := range searchResult.Results {
+		searchResult.Results[i].Unescape()
+	}
+
 	return searchResult.Results, nil
 }
 
@@ -183,6 +187,7 @@ func (s *NekoBTScraper) flattenComments(
 			c.CreatedAt = DecodeNekoBTSnowflake(c.ID)
 		}
 
+		c.Unescape()
 		flat = append(flat, c)
 		if len(c.Children) > 0 {
 			flat = append(

@@ -184,5 +184,8 @@ func (s *AnimeToshoOldScraper) ScrapeComments(page int, feedback bool) ([]ATComm
 		}
 	})
 
+	for i := range comments {
+		comments[i].Unescape()
+	}
 	return comments, hasNext, nil
 }

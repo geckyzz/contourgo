@@ -171,5 +171,8 @@ func (s *AnimeToshoNewScraper) ScrapeComments(
 		}
 	})
 
+	for i := range comments {
+		comments[i].Unescape()
+	}
 	return comments, hasNext, nil
 }

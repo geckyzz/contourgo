@@ -218,6 +218,10 @@ func (s *AnirenaScraper) FetchTorrents(
 		return nil, 0, err
 	}
 
+	for i := range result.Torrents {
+		result.Torrents[i].Unescape()
+	}
+
 	return result.Torrents, result.TotalPages, nil
 }
 
@@ -266,6 +270,10 @@ func (s *AnirenaScraper) FetchComments(torrentID string) ([]AnirenaComment, erro
 		}
 		page++
 		time.Sleep(200 * time.Millisecond)
+	}
+
+	for i := range allComments {
+		allComments[i].Unescape()
 	}
 
 	return allComments, nil

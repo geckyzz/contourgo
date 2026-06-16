@@ -59,6 +59,10 @@ func (s *NyaaScraper) FetchTorrents(
 		return nil, 0, err
 	}
 
+	for i := range result.Torrents {
+		result.Torrents[i].Unescape()
+	}
+
 	return result.Torrents, result.Pagination.TotalPages, nil
 }
 
@@ -77,6 +81,10 @@ func (s *NyaaScraper) FetchComments(torrentID string) ([]NyaaComment, error) {
 	var comments []NyaaComment
 	if err := json.NewDecoder(resp.Body).Decode(&comments); err != nil {
 		return nil, err
+	}
+
+	for i := range comments {
+		comments[i].Unescape()
 	}
 
 	return comments, nil

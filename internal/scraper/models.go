@@ -291,3 +291,82 @@ func ResolveParentInfo(
 	parentID, parentText = ResolveATParent(doc, commentID)
 	return parentID, parentText, fullTitle
 }
+
+func (t *NyaaTorrent) Unescape() {
+	t.Name = html.UnescapeString(t.Name)
+	t.Category = html.UnescapeString(t.Category)
+	t.Subcategory = html.UnescapeString(t.Subcategory)
+}
+
+func (c *NyaaComment) Unescape() {
+	c.Username = html.UnescapeString(c.Username)
+	c.Text = html.UnescapeString(c.Text)
+}
+
+func (c *ATComment) Unescape() {
+	c.Title = html.UnescapeString(c.Title)
+	c.Username = html.UnescapeString(c.Username)
+	c.Message = html.UnescapeString(c.Message)
+}
+
+func (c *NekoBTComment) Unescape() {
+	c.Text = html.UnescapeString(c.Text)
+	c.DisplayName = html.UnescapeString(c.DisplayName)
+	c.ParentText = html.UnescapeString(c.ParentText)
+	c.Title = html.UnescapeString(c.Title)
+}
+
+func (t *NekoBTTorrent) Unescape() {
+	t.Title = html.UnescapeString(t.Title)
+}
+
+func (t *AnirenaTorrent) Unescape() {
+	t.Title = html.UnescapeString(t.Title)
+	t.Uploader = html.UnescapeString(t.Uploader)
+	if t.GroupName != nil {
+		un := html.UnescapeString(*t.GroupName)
+		t.GroupName = &un
+	}
+}
+
+func (c *AnirenaComment) Unescape() {
+	c.Username = html.UnescapeString(c.Username)
+	c.Body = html.UnescapeString(c.Body)
+	if c.EditedByUsername != nil {
+		un := html.UnescapeString(*c.EditedByUsername)
+		c.EditedByUsername = &un
+	}
+}
+
+func (c *TsukihimeComment) Unescape() {
+	c.Content = html.UnescapeString(c.Content)
+	c.Text = html.UnescapeString(c.Text)
+	c.User = html.UnescapeString(c.User)
+	c.ParentText = html.UnescapeString(c.ParentText)
+	if c.Author != nil {
+		c.Author.Username = html.UnescapeString(c.Author.Username)
+		c.Author.DisplayName = html.UnescapeString(c.Author.DisplayName)
+	}
+}
+
+func (t *TsukihimeTorrent) Unescape() {
+	t.Name = html.UnescapeString(t.Name)
+	if t.Anime != nil {
+		t.Anime.Title = html.UnescapeString(t.Anime.Title)
+		t.Anime.EnglishTitle = html.UnescapeString(t.Anime.EnglishTitle)
+	}
+	if t.Group != nil {
+		t.Group.Name = html.UnescapeString(t.Group.Name)
+	}
+}
+
+func (t *TsukihimeTorrentDetails) Unescape() {
+	t.Name = html.UnescapeString(t.Name)
+	if t.Anime != nil {
+		t.Anime.Title = html.UnescapeString(t.Anime.Title)
+		t.Anime.EnglishTitle = html.UnescapeString(t.Anime.EnglishTitle)
+	}
+	if t.Group != nil {
+		t.Group.Name = html.UnescapeString(t.Group.Name)
+	}
+}
