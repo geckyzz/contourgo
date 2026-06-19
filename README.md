@@ -18,7 +18,7 @@ torrent trackers. Designed to be a robust, always-online replacement for legacy 
   - **Groups**: (nekoBT, AniRena, TsukiHime) Monitor specific fansub groups.
   - **Media**: (nekoBT, TsukiHime) Monitor specific series or movies by ID.
     - **nekoBT**: Supports `tmdb:`, `tvdb:`, or media slug.
-    - **TsukiHime**: Supports `mal:`, `anilist:`, `anidb:`, or internal ID (e.g., `tsukihime:79`).
+    - **TsukiHime**: Supports `mal:`, `anilist:`, `anidb:`, or internal ID (e.g., `79`).
   - **Exclusions**: Skip torrents matching glob patterns (e.g., `*[REPACK]*`).
 - **Rich Notifications**: Beautiful Discord embeds with author info, truncated parent comment context
   for replies, and direct links.
@@ -129,7 +129,7 @@ You can define multiple monitors per service.
 #### Media ID Formats
 
 - **nekoBT**: `s123` (internal ID), `tmdb:123`, `tvdb:456`.
-- **TsukiHime**: `79` (internal ID), `tsukihime:79`, `mal:59970`, `anilist:196187`, `anidb:19479`.
+- **TsukiHime**: `79` (internal ID), `mal:59970`, `anilist:196187`, `anidb:19479`.
 
 #### Sorting Options
 

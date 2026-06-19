@@ -330,3 +330,26 @@ func (s *TsukihimeScraper) FetchTorrentDetails(torrentID string) (*TsukihimeTorr
 
 	return &details, nil
 }
+
+func (s *TsukihimeScraper) FetchTorrents(limit int, offset int) ([]TsukihimeTorrent, error) {
+	u := fmt.Sprintf("%s/v1/torrents?limit=%d&offset=%d", s.baseURL, limit, offset)
+	req, _ := http.NewRequest("GET", u, nil)
+
+	body, err := s.doRequest(req)
+	if err != nil {
+		return nil, err
+	}
+
+	var resp struct {
+		Results []TsukihimeTorrent `json:"results"`
+	}
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, err
+	}
+
+	for i := range resp.Results {
+		resp.Results[i].Unescape()
+	}
+
+	return resp.Results, nil
+}
