@@ -13,6 +13,15 @@ import (
 	"github.com/geckyzz/contourgo/internal/db"
 )
 
+var nyaaMentionRegex = regexp.MustCompile(`\B@([a-zA-Z0-9-_]+)`)
+
+func resolveNyaaMentions(message string, siteBase string) string {
+	return nyaaMentionRegex.ReplaceAllString(
+		message,
+		fmt.Sprintf("[@$1](https://%s/user/$1)", siteBase),
+	)
+}
+
 func (b *DiscordBot) EnqueueAnnouncement(
 	service, channelID, torrentID, commentID, authorIconURL string,
 	showCommentID, resolveImage bool,
@@ -133,7 +142,7 @@ func (b *DiscordBot) BuildNyaaEmbed(
 		Title:       trimField(authorName),
 		URL:         authorURL,
 		Color:       embedColor,
-		Description: trimDescription(comment.Message),
+		Description: trimDescription(resolveNyaaMentions(comment.Message, siteBase)),
 		Author: &discordgo.MessageEmbedAuthor{
 			Name:    trimField(torrent.Title),
 			URL:     commentURL,
