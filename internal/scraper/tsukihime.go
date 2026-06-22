@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -131,6 +132,8 @@ type TsukihimeTorrent struct {
 	CommentCount int                    `json:"comment_count"`
 	Anime        *TsukihimeTorrentAnime `json:"anime"`
 	Group        *TsukihimeTorrentGroup `json:"group"`
+	IsAdult      FlexBool               `json:"is_adult"`
+	HasNZB       FlexBool               `json:"has_nzb"`
 }
 
 type TsukihimeTorrentDetails struct {
@@ -139,6 +142,8 @@ type TsukihimeTorrentDetails struct {
 	AddedDate int64                  `json:"added_date"`
 	Anime     *TsukihimeTorrentAnime `json:"anime"`
 	Group     *TsukihimeTorrentGroup `json:"group"`
+	IsAdult   FlexBool               `json:"is_adult"`
+	HasNZB    FlexBool               `json:"has_nzb"`
 }
 
 type TsukihimeTorrentAnime struct {
@@ -150,9 +155,33 @@ type TsukihimeTorrentAnime struct {
 	AniDB        any    `json:"anidb"`
 }
 
+type FlexBool bool
+
+func (tb *FlexBool) UnmarshalJSON(data []byte) error {
+	var val any
+	if err := json.Unmarshal(data, &val); err != nil {
+		return err
+	}
+	switch v := val.(type) {
+	case bool:
+		*tb = FlexBool(v)
+	case float64:
+		*tb = FlexBool(v != 0)
+	case int:
+		*tb = FlexBool(v != 0)
+	case string:
+		str := strings.ToLower(v)
+		*tb = FlexBool(str == "true" || str == "1" || str == "yes")
+	default:
+		*tb = false
+	}
+	return nil
+}
+
 type TsukihimeTorrentGroup struct {
-	ID   any    `json:"id"`
-	Name string `json:"name"`
+	ID       any      `json:"id"`
+	Name     string   `json:"name"`
+	IsFansub FlexBool `json:"is_fansub"`
 }
 
 func (s *TsukihimeScraper) FetchLatestComments(limit int, offset int) (*TsukihimeResponse, error) {
@@ -190,13 +219,17 @@ func (s *TsukihimeScraper) FetchTorrentsByAnime(
 	}
 
 	var resp struct {
-		Results []TsukihimeTorrent `json:"results"`
+		Results []TsukihimeTorrent     `json:"results"`
+		Anime   *TsukihimeTorrentAnime `json:"anime"`
 	}
 	if err := json.Unmarshal(body, &resp); err != nil {
 		return nil, err
 	}
 
 	for i := range resp.Results {
+		if resp.Results[i].Anime == nil && resp.Anime != nil {
+			resp.Results[i].Anime = resp.Anime
+		}
 		resp.Results[i].Unescape()
 	}
 
@@ -217,13 +250,17 @@ func (s *TsukihimeScraper) FetchTorrentsByGroup(
 	}
 
 	var resp struct {
-		Results []TsukihimeTorrent `json:"results"`
+		Results []TsukihimeTorrent     `json:"results"`
+		Group   *TsukihimeTorrentGroup `json:"group"`
 	}
 	if err := json.Unmarshal(body, &resp); err != nil {
 		return nil, err
 	}
 
 	for i := range resp.Results {
+		if resp.Results[i].Group == nil && resp.Group != nil {
+			resp.Results[i].Group = resp.Group
+		}
 		resp.Results[i].Unescape()
 	}
 
@@ -352,4 +389,42 @@ func (s *TsukihimeScraper) FetchTorrents(limit int, offset int) ([]TsukihimeTorr
 	}
 
 	return resp.Results, nil
+}
+
+func (s *TsukihimeScraper) ResolveGroupID(name string) (string, error) {
+	limit := 50
+	offset := 0
+	for {
+		u := fmt.Sprintf("%s/v1/groups?limit=%d&offset=%d", s.baseURL, limit, offset)
+		req, _ := http.NewRequest("GET", u, nil)
+
+		body, err := s.doRequest(req)
+		if err != nil {
+			return "", err
+		}
+
+		var resp struct {
+			Total   int                     `json:"total"`
+			Results []TsukihimeTorrentGroup `json:"results"`
+		}
+		if err := json.Unmarshal(body, &resp); err != nil {
+			return "", err
+		}
+
+		if len(resp.Results) == 0 {
+			break
+		}
+
+		for _, g := range resp.Results {
+			if strings.EqualFold(g.Name, name) {
+				return GetStringOrInt(g.ID), nil
+			}
+		}
+
+		offset += limit
+		if offset >= resp.Total {
+			break
+		}
+	}
+	return "", fmt.Errorf("group name %q not found", name)
 }

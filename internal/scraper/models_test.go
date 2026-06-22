@@ -1,6 +1,7 @@
 package scraper
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -201,4 +202,80 @@ func TestResolveATParent(t *testing.T) {
 			t.Errorf("expected no parent for 748392, got ID=%q, text=%q", pID, pText)
 		}
 	})
+}
+
+func TestFlexBool(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected bool
+	}{
+		{
+			name:     "Int 1 is true",
+			input:    `1`,
+			expected: true,
+		},
+		{
+			name:     "Int 0 is false",
+			input:    `0`,
+			expected: false,
+		},
+		{
+			name:     "Bool true is true",
+			input:    `true`,
+			expected: true,
+		},
+		{
+			name:     "Bool false is false",
+			input:    `false`,
+			expected: false,
+		},
+		{
+			name:     "Float 1.0 is true",
+			input:    `1.0`,
+			expected: true,
+		},
+		{
+			name:     "Float 0.0 is false",
+			input:    `0.0`,
+			expected: false,
+		},
+		{
+			name:     "String 'true' is true",
+			input:    `"true"`,
+			expected: true,
+		},
+		{
+			name:     "String '1' is true",
+			input:    `"1"`,
+			expected: true,
+		},
+		{
+			name:     "String 'yes' is true",
+			input:    `"yes"`,
+			expected: true,
+		},
+		{
+			name:     "String 'false' is false",
+			input:    `"false"`,
+			expected: false,
+		},
+		{
+			name:     "Null is false",
+			input:    `null`,
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var tb FlexBool
+			if err := json.Unmarshal([]byte(tt.input), &tb); err != nil {
+				t.Fatalf("Failed to unmarshal %s: %v", tt.input, err)
+			}
+			if bool(tb) != tt.expected {
+				t.Errorf("UnmarshalJSON(%s) = %v, want %v", tt.input, bool(tb), tt.expected)
+			}
+		})
+	}
 }

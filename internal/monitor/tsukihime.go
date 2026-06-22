@@ -355,6 +355,18 @@ func (m *Monitor) syncTsukihimeCache(
 	var newTorrents []scraper.TsukihimeTorrent
 	maxPages := 1000 // effectively infinite page limit for initial catalog fetch
 
+	// Load Group ID Cache from local cache directory
+	cacheDir, err := os.UserCacheDir()
+	if err != nil {
+		cacheDir = os.TempDir()
+	}
+	groupCachePath := filepath.Join(cacheDir, "contourgo", "tsukihime", "groups.json")
+	groupMap := make(map[string]string)
+	if groupData, err := os.ReadFile(groupCachePath); err == nil {
+		json.Unmarshal(groupData, &groupMap)
+	}
+	groupMapUpdated := false
+
 	fetchedGroups := make(map[string]bool)
 	fetchedAnime := make(map[string]bool)
 	fetchedKeywords := make(map[string]bool)
@@ -368,23 +380,46 @@ func (m *Monitor) syncTsukihimeCache(
 
 		// 1. Groups
 		for _, g := range monitorCfg.Groups {
-			if g == "" || fetchedGroups[g] {
+			if g == "" {
 				continue
 			}
-			fetchedGroups[g] = true
+			resolvedGroup := g
+			if _, err := strconv.Atoi(g); err != nil {
+				// Check group map cache first
+				if cachedID, ok := groupMap[strings.ToLower(g)]; ok {
+					log.Printf("[TSUKIHIME] Found cached group ID for %q: %q", g, cachedID)
+					resolvedGroup = cachedID
+				} else {
+					log.Printf("[TSUKIHIME] Resolving group name %q to ID...", g)
+					if id, resolveErr := scr.ResolveGroupID(g); resolveErr == nil {
+						log.Printf("[TSUKIHIME] Resolved group name %q to ID %q", g, id)
+						resolvedGroup = id
+						groupMap[strings.ToLower(g)] = id
+						groupMapUpdated = true
+					} else {
+						log.Printf("[TSUKIHIME] Error resolving group name %q: %v", g, resolveErr)
+						continue
+					}
+				}
+			}
 
-			log.Printf("[TSUKIHIME] Syncing group %s...", g)
+			if fetchedGroups[resolvedGroup] {
+				continue
+			}
+			fetchedGroups[resolvedGroup] = true
+
+			log.Printf("[TSUKIHIME] Syncing group %s...", resolvedGroup)
 			offset := 0
 			reachedLastKnown := false
 			for page := 0; page < maxPages; page++ {
 				m.logFetch("[TSUKIHIME]["+mKey+"]", page+1, map[string]any{
-					"group":  g,
+					"group":  resolvedGroup,
 					"offset": offset,
 					"limit":  100,
 				})
-				results, err := scr.FetchTorrentsByGroup(g, 100, offset)
+				results, err := scr.FetchTorrentsByGroup(resolvedGroup, 100, offset)
 				if err != nil {
-					log.Printf("[TSUKIHIME] Error fetching group %s: %v", g, err)
+					log.Printf("[TSUKIHIME] Error fetching group %s: %v", resolvedGroup, err)
 					break
 				}
 				if len(results) == 0 {
@@ -400,7 +435,7 @@ func (m *Monitor) syncTsukihimeCache(
 							mKey,
 							cache.LastKnownID,
 							t.ID,
-							g,
+							resolvedGroup,
 						)
 						reachedLastKnown = true
 						break
@@ -408,7 +443,7 @@ func (m *Monitor) syncTsukihimeCache(
 					// Inject synthetic group info since the API does not
 					// embed a group object in /v1/groups/{id} responses.
 					if t.Group == nil {
-						t.Group = &scraper.TsukihimeTorrentGroup{ID: g}
+						t.Group = &scraper.TsukihimeTorrentGroup{ID: resolvedGroup}
 					}
 					newTorrents = append(newTorrents, t)
 				}
@@ -543,6 +578,20 @@ func (m *Monitor) syncTsukihimeCache(
 				}
 				offset += 100
 				time.Sleep(300 * time.Millisecond)
+			}
+		}
+	}
+
+	if groupMapUpdated {
+		if err := os.MkdirAll(filepath.Dir(groupCachePath), 0755); err == nil {
+			if groupData, err := json.MarshalIndent(groupMap, "", "  "); err == nil {
+				if err := os.WriteFile(groupCachePath, groupData, 0644); err != nil {
+					log.Printf(
+						"[TSUKIHIME] Error saving group cache to %s: %v",
+						groupCachePath,
+						err,
+					)
+				}
 			}
 		}
 	}
