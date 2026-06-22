@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	Version      = "0.8.5"
+	Version      = "0.9.0"
 	CommitSHA    = "unknown"
 	RepoOverride = "" // Can be set via ldflags: -X github.com/geckyzz/contourgo/internal/discord.RepoOverride=owner/repo
 )
