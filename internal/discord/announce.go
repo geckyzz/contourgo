@@ -336,21 +336,21 @@ func (b *DiscordBot) BuildNekoBTEmbed(
 	resolveUserContentImage bool,
 	parentText string,
 ) *discordgo.MessageEmbed {
-	baseTorrentURL := fmt.Sprintf("https://nekobt.to/torrents/%s", torrent.TorrentID)
 	jumpToCommentURL := fmt.Sprintf(
 		"https://nekobt.to/torrents/%s?com=%s",
 		torrent.TorrentID,
 		comment.CommentID,
 	)
 
+	authorURL := fmt.Sprintf("https://nekobt.to/u/%s", urlPathEscape(comment.Username))
 	description := resolveNekoBTMentions(comment.Message)
 
 	embed := &discordgo.MessageEmbed{
 		Title: trimField(comment.Username),
-		URL:   jumpToCommentURL,
+		URL:   authorURL,
 		Author: &discordgo.MessageEmbedAuthor{
 			Name:    trimField(torrent.Title),
-			URL:     baseTorrentURL,
+			URL:     jumpToCommentURL,
 			IconURL: authorIconURL,
 		},
 		Description: trimDescription(description),
