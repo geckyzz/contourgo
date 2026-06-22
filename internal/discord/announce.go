@@ -167,7 +167,7 @@ func (b *DiscordBot) BuildNyaaEmbed(
 		b.resolveEmbedImage(embed, comment.Message, siteBase)
 	}
 
-	b.setEmbedThumbnail(embed, userAvatarURL, "default.png")
+	b.setEmbedThumbnail(embed, userAvatarURL, "")
 	b.setEmbedTimestamp(embed, comment.Timestamp)
 
 	return embed

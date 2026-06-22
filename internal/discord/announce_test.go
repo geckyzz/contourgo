@@ -1,6 +1,10 @@
 package discord
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/geckyzz/contourgo/internal/db"
+)
 
 func TestExtractImageURL(t *testing.T) {
 	tests := []struct {
@@ -104,5 +108,67 @@ func TestResolveNyaaMentions(t *testing.T) {
 				t.Errorf("resolveNyaaMentions() = %q, want %q", got, tt.expected)
 			}
 		})
+	}
+}
+
+func TestBuildNyaaEmbed_DefaultAvatar(t *testing.T) {
+	bot := &DiscordBot{}
+
+	torrent := db.Torrent{
+		TorrentID: "2083384",
+		Title:     "Test Torrent",
+	}
+	comment := db.Comment{
+		Username:  "someuser",
+		Position:  1,
+		AvatarURL: "/static/img/avatar/default.png",
+		Message:   "please seed",
+		Timestamp: 1777144089,
+	}
+
+	embed := bot.BuildNyaaEmbed("nyaa", "https://author-icon.png", torrent, comment, true, false)
+
+	if embed.Thumbnail == nil {
+		t.Fatalf("Expected embed Thumbnail to be set, but got nil")
+	}
+
+	expectedThumbnailURL := "https://nyaa.si/static/img/avatar/default.png"
+	if embed.Thumbnail.URL != expectedThumbnailURL {
+		t.Errorf(
+			"Expected thumbnail URL to be %q, got %q",
+			expectedThumbnailURL,
+			embed.Thumbnail.URL,
+		)
+	}
+}
+
+func TestBuildNyaaEmbed_CustomAvatar(t *testing.T) {
+	bot := &DiscordBot{}
+
+	torrent := db.Torrent{
+		TorrentID: "2085720",
+		Title:     "Test Torrent",
+	}
+	comment := db.Comment{
+		Username:  "anotheruser",
+		Position:  1,
+		AvatarURL: "https://i1.wp.com/nyaa.si/user/anotheruser/avatar-WP25-A?ssl=1",
+		Message:   "Please seed, I missed this one...",
+		Timestamp: 1777144089,
+	}
+
+	embed := bot.BuildNyaaEmbed("nyaa", "https://author-icon.png", torrent, comment, true, false)
+
+	if embed.Thumbnail == nil {
+		t.Fatalf("Expected embed Thumbnail to be set, but got nil")
+	}
+
+	expectedThumbnailURL := "https://i1.wp.com/nyaa.si/user/anotheruser/avatar-WP25-A?ssl=1"
+	if embed.Thumbnail.URL != expectedThumbnailURL {
+		t.Errorf(
+			"Expected thumbnail URL to be %q, got %q",
+			expectedThumbnailURL,
+			embed.Thumbnail.URL,
+		)
 	}
 }
