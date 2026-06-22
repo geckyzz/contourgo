@@ -3,6 +3,8 @@ package db
 import (
 	"database/sql"
 	"embed"
+	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -196,6 +198,49 @@ func (db *DB) StoreCommentTx(
 		parentID,
 		parentMessage,
 	)
+}
+
+func (db *DB) GetLatestCommentByUsersBeforePosition(
+	service, torrentID string,
+	usernames []string,
+	beforePos int,
+) (Comment, bool) {
+	if len(usernames) == 0 {
+		return Comment{}, false
+	}
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	placeholders := make([]string, len(usernames))
+	args := make([]any, 0, 4+len(usernames))
+	args = append(args, service, torrentID, torrentID)
+	for i, u := range usernames {
+		placeholders[i] = "LOWER(?)"
+		args = append(args, strings.ToLower(u))
+	}
+	args = append(args, beforePos)
+
+	query := fmt.Sprintf(`
+		SELECT service, torrent_id, comment_id, username, message, timestamp, position, 
+		       COALESCE(user_role, ''), COALESCE(avatar_url, ''), COALESCE(parent_id, ''), COALESCE(parent_message, '')
+		FROM comments 
+		WHERE service = ? 
+		  AND (torrent_id = ? OR torrent_id LIKE '%%.' || ?)
+		  AND LOWER(username) IN (%s)
+		  AND position < ?
+		ORDER BY position DESC
+		LIMIT 1
+	`, strings.Join(placeholders, ", "))
+
+	var c Comment
+	err := db.Conn.QueryRow(query, args...).Scan(
+		&c.Service, &c.TorrentID, &c.CommentID, &c.Username, &c.Message, &c.Timestamp, &c.Position,
+		&c.UserRole, &c.AvatarURL, &c.ParentID, &c.ParentMessage,
+	)
+	if err != nil {
+		return Comment{}, false
+	}
+	return c, true
 }
 
 func (db *DB) GetComment(service, torrentID, commentID string) (Comment, bool) {

@@ -3,11 +3,15 @@ package monitor
 import (
 	"fmt"
 	"log"
+	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/geckyzz/contourgo/internal/scraper"
 )
+
+var nyaaMentionRegex = regexp.MustCompile(`\B@([a-zA-Z0-9-_]+)`)
 
 func (m *Monitor) checkNyaa(force bool) {
 	m.checkNyaaSukebeiService("nyaa", force)
@@ -145,7 +149,7 @@ func (m *Monitor) checkNyaaSukebeiService(service string, force bool) {
 							continue
 						}
 
-						for _, c := range comments {
+						for idx, c := range comments {
 							commentIDStr := strconv.Itoa(c.ID)
 							if !m.db.IsCommentStored(service, torrentIDStr, commentIDStr) {
 								var ts int64
@@ -155,6 +159,25 @@ func (m *Monitor) checkNyaaSukebeiService(service string, force bool) {
 								} else {
 									ts = time.Now().Unix()
 								}
+
+								var parentID, parentMessage string
+								matches := nyaaMentionRegex.FindAllStringSubmatch(c.Text, -1)
+								if len(matches) > 0 {
+									mentioned := make(map[string]bool)
+									for _, match := range matches {
+										mentioned[strings.ToLower(match[1])] = true
+									}
+									// Search backwards in the slice from index of current comment
+									for j := idx - 1; j >= 0; j-- {
+										prevC := comments[j]
+										if mentioned[strings.ToLower(prevC.Username)] {
+											parentID = strconv.Itoa(prevC.ID)
+											parentMessage = prevC.Text
+											break
+										}
+									}
+								}
+
 								m.db.StoreComment(
 									service,
 									torrentIDStr,
@@ -165,8 +188,8 @@ func (m *Monitor) checkNyaaSukebeiService(service string, force bool) {
 									c.Pos,
 									c.Role,
 									c.Avatar,
-									"",
-									"",
+									parentID,
+									parentMessage,
 								)
 
 								m.enqueueAnnouncement(

@@ -172,3 +172,66 @@ func TestBuildNyaaEmbed_CustomAvatar(t *testing.T) {
 		)
 	}
 }
+
+func TestBuildNyaaEmbed_DynamicReply(t *testing.T) {
+	database, err := db.InitDB(":memory:")
+	if err != nil {
+		t.Fatalf("Failed to initialize database: %v", err)
+	}
+	defer database.Close()
+
+	bot := &DiscordBot{
+		DB: database,
+	}
+
+	torrent := db.Torrent{
+		TorrentID: "2085681",
+		Title:     "Everyday HOST CLUB",
+	}
+
+	// Store Moses35i comment
+	err = database.StoreComment(
+		"nyaa",
+		"2085681",
+		"1518581367766782033",
+		"Moses35i",
+		"Any news on the last episode?",
+		1777144089,
+		3,
+		"",
+		"",
+		"",
+		"",
+	)
+	if err != nil {
+		t.Fatalf("Failed to store Moses35i comment: %v", err)
+	}
+
+	// Build embed for Subcaln't comment that mentions Moses35i
+	comment := db.Comment{
+		Username:  "Subcaln't",
+		Position:  4,
+		Message:   "@Moses35i on it. I decided to go solo once again",
+		Timestamp: 1777144200,
+	}
+
+	embed := bot.BuildNyaaEmbed("nyaa", "https://author-icon.png", torrent, comment, true, false)
+
+	var hasReplyingTo bool
+	for _, field := range embed.Fields {
+		if field.Name == "↪️ Replying to" {
+			hasReplyingTo = true
+			if field.Value != "Any news on the last episode?" {
+				t.Errorf(
+					"Expected Replying to value to be %q, got %q",
+					"Any news on the last episode?",
+					field.Value,
+				)
+			}
+		}
+	}
+
+	if !hasReplyingTo {
+		t.Errorf("Expected embed to have '↪️ Replying to' field, but it did not")
+	}
+}

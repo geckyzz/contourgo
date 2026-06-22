@@ -167,6 +167,38 @@ func (b *DiscordBot) BuildNyaaEmbed(
 		b.resolveEmbedImage(embed, comment.Message, siteBase)
 	}
 
+	parentText := comment.ParentMessage
+	if parentText == "" {
+		matches := nyaaMentionRegex.FindAllStringSubmatch(comment.Message, -1)
+		if len(matches) > 0 {
+			var usernames []string
+			seen := make(map[string]bool)
+			for _, m := range matches {
+				u := strings.ToLower(m[1])
+				if !seen[u] {
+					seen[u] = true
+					usernames = append(usernames, m[1])
+				}
+			}
+			if b.DB != nil {
+				if parentComment, ok := b.DB.GetLatestCommentByUsersBeforePosition(service, torrent.TorrentID, usernames, comment.Position); ok {
+					parentText = parentComment.Message
+				}
+			}
+		}
+	}
+
+	if parentText != "" {
+		pText := parentText
+		if len(pText) > 1000 {
+			pText = pText[:997] + "..."
+		}
+		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
+			Name:  "↪️ Replying to",
+			Value: pText,
+		})
+	}
+
 	b.setEmbedThumbnail(embed, userAvatarURL, "")
 	b.setEmbedTimestamp(embed, comment.Timestamp)
 
