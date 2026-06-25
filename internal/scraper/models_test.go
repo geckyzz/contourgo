@@ -202,6 +202,54 @@ func TestResolveATParent(t *testing.T) {
 			t.Errorf("expected no parent for 748392, got ID=%q, text=%q", pID, pText)
 		}
 	})
+
+	t.Run("New Nested Layout (XYZ)", func(t *testing.T) {
+		const newNestedHTML = `<div id="view_comments">
+			<div class="comment">
+				<div class="comment_user">
+					<span onclick="var e=document.getElementById('comment_body_1204').style; e.display=e.display?'':'none';" id="comment_mod_1204">
+						Yesterday 22:18 —
+						<strong><em>Anonymous</em></strong>
+					</span>
+				</div>
+				<div id="comment_body_1204">
+					<div id="comment_message_1204" class="comment_message">This is a parent comment.</div>
+					<a id="comment1207"></a>
+					<div class="comment2">
+						<div class="comment_user">
+							<span id="comment_mod_1207">
+								Yesterday 22:25 —
+								<strong><em>Anonymous</em></strong>
+							</span>
+						</div>
+						<div id="comment_body_1207">
+							<div id="comment_message_1207" class="comment_message">This is a nested reply.</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>`
+
+		doc, err := goquery.NewDocumentFromReader(strings.NewReader(newNestedHTML))
+		if err != nil {
+			t.Fatalf("failed to parse: %v", err)
+		}
+
+		// 1207 is child of 1204
+		pID, pText := ResolveATParent(doc, "1207")
+		if pID != "1204" {
+			t.Errorf("expected parent ID to be 1204, got %s", pID)
+		}
+		if pText != "This is a parent comment." {
+			t.Errorf("expected parent text, got %q", pText)
+		}
+
+		// 1204 is root
+		pID, pText = ResolveATParent(doc, "1204")
+		if pID != "" || pText != "" {
+			t.Errorf("expected no parent for 1204, got ID=%q, text=%q", pID, pText)
+		}
+	})
 }
 
 func TestFlexBool(t *testing.T) {

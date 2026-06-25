@@ -172,7 +172,34 @@ func processMessageLinks(messageDiv *goquery.Selection, baseURL string) {
 }
 
 func ResolveATParent(doc *goquery.Document, commentID string) (parentID string, parentText string) {
-	// 1. Try New Layout (XYZ)
+	// 1. Try physical nesting structure (works for new XYZ nested comments, and old ORG layout)
+	bodySel := doc.Find(fmt.Sprintf("#comment_body_%s", commentID))
+	if bodySel.Length() > 0 {
+		curr := bodySel.Parent()
+		for curr.Length() > 0 {
+			idAttr, exists := curr.Attr("id")
+			if exists && strings.HasPrefix(idAttr, "comment_body_") {
+				parentID = strings.TrimPrefix(idAttr, "comment_body_")
+				break
+			}
+			curr = curr.Parent()
+		}
+
+		if parentID != "" {
+			parentBodySel := doc.Find(fmt.Sprintf("#comment_body_%s", parentID))
+			if parentBodySel.Length() > 0 {
+				msgSel := parentBodySel.Find("div.comment_message, div.user_message_c").First()
+				if msgSel.Length() > 0 {
+					msgSelCopy := msgSel.Clone()
+					msgSelCopy.Find("br").ReplaceWithHtml("\n")
+					parentText = strings.TrimSpace(msgSelCopy.Text())
+					return parentID, parentText
+				}
+			}
+		}
+	}
+
+	// 2. Fallback: Try depth-based XYZ Layout (non-nested comments with depth class)
 	var targetCommentIndex = -1
 	type commentItem struct {
 		id    string
@@ -199,7 +226,7 @@ func ResolveATParent(doc *goquery.Document, commentID string) (parentID string, 
 				}
 			}
 
-			msgSel := sel.Find("div.comment_message")
+			msgSel := sel.Find("div.comment_message, div.user_message_c").First()
 			msgSelCopy := msgSel.Clone()
 			msgSelCopy.Find("br").ReplaceWithHtml("\n")
 			msg := strings.TrimSpace(msgSelCopy.Text())
@@ -224,34 +251,6 @@ func ResolveATParent(doc *goquery.Document, commentID string) (parentID string, 
 			}
 		}
 		return "", ""
-	}
-
-	// 2. Try Old Layout (ORG)
-	bodySel := doc.Find(fmt.Sprintf("#comment_body_%s", commentID))
-	if bodySel.Length() > 0 {
-		curr := bodySel.Parent()
-		for {
-			curr = curr.Parent()
-			if curr.Length() == 0 {
-				break
-			}
-			var foundID string
-			curr.Children().Each(func(i int, child *goquery.Selection) {
-				idAttr, _ := child.Attr("id")
-				if strings.HasPrefix(idAttr, "comment_body_") {
-					foundID = strings.TrimPrefix(idAttr, "comment_body_")
-				}
-			})
-			if foundID != "" {
-				parentID = foundID
-				parentBodySel := curr.Find(fmt.Sprintf("#comment_body_%s", parentID))
-				msgSel := parentBodySel.Find("div.user_message_c").First()
-				msgSelCopy := msgSel.Clone()
-				msgSelCopy.Find("br").ReplaceWithHtml("\n")
-				parentText = strings.TrimSpace(msgSelCopy.Text())
-				return parentID, parentText
-			}
-		}
 	}
 
 	return "", ""
