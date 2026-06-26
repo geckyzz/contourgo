@@ -133,23 +133,45 @@ func (s *AnimeToshoNewScraper) ScrapeComments(
 		}
 
 		userText := commentUser.Text()
-		var timestamp int64 = time.Now().Unix()
+		// If userText has multiple lines, find the one containing Today, Yesterday, or a DD/MM/YY date.
 		var datePart string
-		if _, after, ok := strings.Cut(userText, "posted on "); ok {
-			datePart = after
-		} else if idx := strings.Index(userText, "—"); idx != -1 {
-			datePart = userText[:idx]
-		} else if idx := strings.Index(userText, "\u2014"); idx != -1 { // support em-dash
-			datePart = userText[:idx]
-		} else {
-			datePart = userText
+		lines := strings.Split(userText, "\n")
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if strings.Contains(line, "Today") || strings.Contains(line, "Yesterday") ||
+				strings.Contains(line, "/") {
+				// Cut off anything after a dash if present
+				if idx := strings.Index(line, "—"); idx != -1 {
+					line = line[:idx]
+				}
+				if idx := strings.Index(line, "\u2014"); idx != -1 {
+					line = line[:idx]
+				}
+				datePart = strings.TrimSpace(line)
+				break
+			}
 		}
+
+		if datePart == "" {
+			if _, after, ok := strings.Cut(userText, "posted on "); ok {
+				datePart = after
+			} else if idx := strings.Index(userText, "—"); idx != -1 {
+				datePart = userText[:idx]
+			} else if idx := strings.Index(userText, "\u2014"); idx != -1 {
+				datePart = userText[:idx]
+			} else {
+				datePart = userText
+			}
+		}
+
 		// Clean up the date string
 		datePart = strings.TrimSpace(datePart)
 		datePart = strings.TrimSuffix(datePart, " UTC")
 		datePart = strings.TrimSpace(datePart)
+
+		var timestamp int64 = time.Now().Unix()
 		if datePart != "" {
-			timestamp = parseATTime(datePart)
+			timestamp = parseATTime(datePart, time.Time{})
 		}
 
 		// Parse Comment Type

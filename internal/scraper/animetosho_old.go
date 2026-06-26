@@ -147,7 +147,7 @@ func (s *AnimeToshoOldScraper) ScrapeComments(page int, feedback bool) ([]ATComm
 			}
 		}
 
-		timestamp := parseATTime(timeStr)
+		timestamp := parseATTime(timeStr, time.Time{})
 
 		// Parse Comment Type
 		cType := "Torrent"

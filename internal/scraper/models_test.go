@@ -48,7 +48,7 @@ func TestParseATTime(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := parseATTime(tt.input)
+			got := parseATTime(tt.input, time.Time{})
 			if got != tt.expected {
 				t.Errorf(
 					"parseATTime(%q) = %v, want %v",

@@ -58,19 +58,35 @@ type ATComment struct {
 	Type      string // Torrent, Feedback, DDL, Question, etc.
 }
 
-func parseATTime(timeStr string) int64 {
+
+
+func parseATTime(timeStr string, refTime time.Time) int64 {
 	timeStr = strings.TrimSpace(timeStr)
 	timeStr = strings.TrimPrefix(timeStr, "—")
 	timeStr = strings.TrimSpace(timeStr)
 
-	now := time.Now().UTC()
+	if refTime.IsZero() {
+		refTime = time.Now().UTC()
+	} else {
+		refTime = refTime.UTC()
+	}
+
 	if strings.Contains(timeStr, "Today") {
 		parts := strings.Fields(timeStr)
 		if len(parts) >= 2 {
 			timePart := parts[1]
 			var hour, min int
 			fmt.Sscanf(timePart, "%d:%d", &hour, &min)
-			dt := time.Date(now.Year(), now.Month(), now.Day(), hour, min, 0, 0, time.UTC)
+			dt := time.Date(
+				refTime.Year(),
+				refTime.Month(),
+				refTime.Day(),
+				hour,
+				min,
+				0,
+				0,
+				time.UTC,
+			)
 			return dt.Unix()
 		}
 	} else if strings.Contains(timeStr, "Yesterday") {
@@ -79,7 +95,7 @@ func parseATTime(timeStr string) int64 {
 			timePart := parts[1]
 			var hour, min int
 			fmt.Sscanf(timePart, "%d:%d", &hour, &min)
-			yest := now.AddDate(0, 0, -1)
+			yest := refTime.AddDate(0, 0, -1)
 			dt := time.Date(yest.Year(), yest.Month(), yest.Day(), hour, min, 0, 0, time.UTC)
 			return dt.Unix()
 		}
@@ -94,7 +110,7 @@ func parseATTime(timeStr string) int64 {
 			return dt.Unix()
 		}
 	}
-	return now.Unix()
+	return refTime.Unix()
 }
 
 func DecodeNekoBTSnowflake(idStr string) int64 {
@@ -260,10 +276,10 @@ func ResolveParentInfo(
 	client *http.Client,
 	targetURL string,
 	commentID string,
-) (parentID string, parentText string, fullTitle string) {
+) (parentID string, parentText string, fullTitle string, targetUsername string) {
 	req, err := http.NewRequest("GET", targetURL, nil)
 	if err != nil {
-		return "", "", ""
+		return "", "", "", ""
 	}
 	req.Header.Set(
 		"User-Agent",
@@ -271,15 +287,15 @@ func ResolveParentInfo(
 	)
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", "", ""
+		return "", "", "", ""
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return "", "", ""
+		return "", "", "", ""
 	}
 	doc, err := goquery.NewDocumentFromReader(resp.Body)
 	if err != nil {
-		return "", "", ""
+		return "", "", "", ""
 	}
 
 	titleSel := doc.Find("h2#title")
@@ -287,8 +303,29 @@ func ResolveParentInfo(
 		fullTitle = strings.TrimSpace(titleSel.Text())
 	}
 
+	// Try to resolve targetUsername from this page since it contains full alias (e.g. Anonymous: "pine")
+	// The parent of #comment_body_<commentID> or the comment container itself has the username info.
+	// For both XYZ and ORG, the comment container contains div.comment_user.
+	bodySel := doc.Find(fmt.Sprintf("#comment_body_%s", commentID))
+	if bodySel.Length() > 0 {
+		container := bodySel.Parent()
+		userSel := container.Find("div.comment_user").First()
+		if userSel.Length() > 0 {
+			u := strings.TrimSpace(userSel.Find("strong").Text())
+			if strings.HasPrefix(u, "Anonymous") && strings.Contains(u, ":") {
+				parts := strings.SplitN(u, ":", 2)
+				nick := strings.Trim(parts[1], " \t\r\n\"'")
+				if nick != "" {
+					targetUsername = fmt.Sprintf("Anonymous (%s)", nick)
+				}
+			} else if u != "" {
+				targetUsername = u
+			}
+		}
+	}
+
 	parentID, parentText = ResolveATParent(doc, commentID)
-	return parentID, parentText, fullTitle
+	return parentID, parentText, fullTitle, targetUsername
 }
 
 func (t *NyaaTorrent) Unescape() {
