@@ -58,8 +58,6 @@ type ATComment struct {
 	Type      string // Torrent, Feedback, DDL, Question, etc.
 }
 
-
-
 func parseATTime(timeStr string, refTime time.Time) int64 {
 	timeStr = strings.TrimSpace(timeStr)
 	timeStr = strings.TrimPrefix(timeStr, "—")
