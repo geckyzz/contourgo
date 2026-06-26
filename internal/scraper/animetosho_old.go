@@ -124,7 +124,7 @@ func (s *AnimeToshoOldScraper) ScrapeComments(page int, feedback bool) ([]ATComm
 		if strings.HasPrefix(username, "Anonymous") {
 			if strings.Contains(username, ":") {
 				parts := strings.SplitN(username, ":", 2)
-				nick := strings.Trim(parts[1], " \t\r\n\"")
+				nick := strings.Trim(parts[1], " \t\r\n\"'")
 				if nick != "" {
 					username = fmt.Sprintf("Anonymous (%s)", nick)
 				} else {

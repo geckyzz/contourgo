@@ -123,7 +123,7 @@ func (s *AnimeToshoNewScraper) ScrapeComments(
 		if strings.HasPrefix(username, "Anonymous") {
 			if strings.Contains(username, ":") {
 				parts := strings.SplitN(username, ":", 2)
-				nick := strings.Trim(parts[1], " \t\r\n\"")
+				nick := strings.Trim(parts[1], " \t\r\n\"'")
 				if nick != "" {
 					username = fmt.Sprintf("Anonymous (%s)", nick)
 				} else {
@@ -134,10 +134,21 @@ func (s *AnimeToshoNewScraper) ScrapeComments(
 
 		userText := commentUser.Text()
 		var timestamp int64 = time.Now().Unix()
+		var datePart string
 		if _, after, ok := strings.Cut(userText, "posted on "); ok {
-			datePart := strings.TrimSpace(after)
-			datePart = strings.TrimSuffix(datePart, " UTC")
-			datePart = strings.TrimSpace(datePart)
+			datePart = after
+		} else if idx := strings.Index(userText, "—"); idx != -1 {
+			datePart = userText[:idx]
+		} else if idx := strings.Index(userText, "\u2014"); idx != -1 { // support em-dash
+			datePart = userText[:idx]
+		} else {
+			datePart = userText
+		}
+		// Clean up the date string
+		datePart = strings.TrimSpace(datePart)
+		datePart = strings.TrimSuffix(datePart, " UTC")
+		datePart = strings.TrimSpace(datePart)
+		if datePart != "" {
 			timestamp = parseATTime(datePart)
 		}
 
