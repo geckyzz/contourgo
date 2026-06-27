@@ -120,10 +120,9 @@ type AnimetoshoPageConfig struct {
 }
 
 type NekobtConfig struct {
-	API   NekobtAPIConfig `toml:"api"`
-	Sort  string          `toml:"sort"`
-	Order string          `toml:"order"`
-	Page  PageConfig      `toml:"page"`
+	API  NekobtAPIConfig `toml:"api"`
+	Sort string          `toml:"sort"`
+	Page PageConfig      `toml:"page"`
 }
 
 type NekobtAPIConfig struct {
