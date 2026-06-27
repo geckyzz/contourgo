@@ -12,6 +12,7 @@ import (
 
 type Monitor struct {
 	config         *config.Config
+	configMu       sync.RWMutex
 	db             *db.DB
 	bot            *discord.DiscordBot
 	forceCheckChan chan bool
@@ -36,6 +37,18 @@ func NewMonitor(
 	}
 }
 
+func (m *Monitor) Config() *config.Config {
+	m.configMu.RLock()
+	defer m.configMu.RUnlock()
+	return m.config
+}
+
+func (m *Monitor) UpdateConfig(cfg *config.Config) {
+	m.configMu.Lock()
+	defer m.configMu.Unlock()
+	m.config = cfg
+}
+
 func (m *Monitor) isDue(service, key string, monitorCfg config.MonitorConfig, force bool) bool {
 	if force {
 		return true
@@ -49,7 +62,7 @@ func (m *Monitor) isDue(service, key string, monitorCfg config.MonitorConfig, fo
 		return true
 	}
 
-	interval := config.ParseISO8601Duration(m.config.Config.Monitor.By)
+	interval := config.ParseISO8601Duration(m.Config().Config.Monitor.By)
 	if monitorCfg.Monitor.By != "" {
 		interval = config.ParseISO8601Duration(monitorCfg.Monitor.By)
 	}
@@ -77,9 +90,10 @@ func (m *Monitor) updateLastCheck(service, key string) {
 	}
 
 	now := time.Now()
-	if m.config.Config.Time.Uniform {
-		interval := config.ParseISO8601Duration(m.config.Config.Monitor.By)
-		inner, ok := m.config.Monitors[service]
+	cfg := m.Config()
+	if cfg.Config.Time.Uniform {
+		interval := config.ParseISO8601Duration(cfg.Config.Monitor.By)
+		inner, ok := cfg.Monitors[service]
 		if ok {
 			if monitorCfg, exists := inner[key]; exists && monitorCfg.Monitor.By != "" {
 				interval = config.ParseISO8601Duration(monitorCfg.Monitor.By)
@@ -91,7 +105,8 @@ func (m *Monitor) updateLastCheck(service, key string) {
 }
 
 func (m *Monitor) hasActiveMonitorsDue(service string, force bool) bool {
-	inner, ok := m.config.Monitors[service]
+	cfg := m.Config()
+	inner, ok := cfg.Monitors[service]
 	if !ok || len(inner) == 0 {
 		return false
 	}

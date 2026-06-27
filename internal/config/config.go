@@ -10,6 +10,13 @@ import (
 	"github.com/pelletier/go-toml/v2"
 )
 
+type StringOrInt string
+
+func (s *StringOrInt) UnmarshalText(text []byte) error {
+	*s = StringOrInt(text)
+	return nil
+}
+
 type Config struct {
 	Discord  DiscordConfig                       `toml:"discord"`
 	Config   MainConfig                          `toml:"config"`
@@ -18,7 +25,7 @@ type Config struct {
 
 type DiscordConfig struct {
 	Token    string               `toml:"token"`
-	Server   string               `toml:"server"`
+	Server   StringOrInt          `toml:"server"`
 	Mentions map[string]any       `toml:"mentions"`
 	Announce AnnounceConfig       `toml:"announce"`
 	Members  MembersConfig        `toml:"members"`
@@ -28,7 +35,7 @@ type DiscordConfig struct {
 }
 
 type AnnounceConfig struct {
-	Channel string `toml:"channel"`
+	Channel StringOrInt `toml:"channel"`
 }
 
 type MembersConfig struct {
@@ -137,7 +144,7 @@ type PageConfig struct {
 }
 
 type MonitorDiscordConfig struct {
-	Channel  string                `toml:"channel"` // Optional: override global announce channel
+	Channel  StringOrInt           `toml:"channel"` // Optional: override global announce channel
 	Mentions MonitorMentionsConfig `toml:"mentions"`
 	Embed    MonitorEmbedConfig    `toml:"embed"`
 	Fields   MonitorFieldsConfig   `toml:"fields"`

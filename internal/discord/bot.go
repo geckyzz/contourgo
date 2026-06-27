@@ -88,6 +88,7 @@ type DiscordBot struct {
 	ForceCheckChan  chan bool
 	StartTime       time.Time
 	stopCh          chan struct{}
+	OnConfigReload  func(*config.Config)
 }
 
 func NewDiscordBot(
@@ -105,7 +106,7 @@ func NewDiscordBot(
 		Session:         dg,
 		Config:          cfg,
 		ConfigPath:      configPath,
-		AnnounceChannel: cfg.Discord.Announce.Channel,
+		AnnounceChannel: string(cfg.Discord.Announce.Channel),
 		DB:              database,
 		ForceCheckChan:  forceCheckChan,
 		StartTime:       time.Now(),
@@ -127,12 +128,15 @@ func (b *DiscordBot) Stop() error {
 	close(b.stopCh)
 	// Clean up guild commands on shutdown
 	if b.Session.State.User != nil {
-		cmds, err := b.Session.ApplicationCommands(b.Session.State.User.ID, b.Config.Discord.Server)
+		cmds, err := b.Session.ApplicationCommands(
+			b.Session.State.User.ID,
+			string(b.Config.Discord.Server),
+		)
 		if err == nil {
 			for _, cmd := range cmds {
 				b.Session.ApplicationCommandDelete(
 					b.Session.State.User.ID,
-					b.Config.Discord.Server,
+					string(b.Config.Discord.Server),
 					cmd.ID,
 				)
 			}
@@ -171,7 +175,7 @@ func (b *DiscordBot) onReady(s *discordgo.Session, r *discordgo.Ready) {
 	// Check if bot has joined the target server
 	guildJoined := false
 	for _, g := range r.Guilds {
-		if g.ID == b.Config.Discord.Server {
+		if g.ID == string(b.Config.Discord.Server) {
 			guildJoined = true
 			break
 		}
@@ -180,7 +184,7 @@ func (b *DiscordBot) onReady(s *discordgo.Session, r *discordgo.Ready) {
 	if !guildJoined {
 		log.Printf(
 			"⚠️ WARNING: The bot has not joined the target server (Guild ID: %s) yet. Please use the invite link above to add the bot with both 'bot' and 'applications.commands' scopes.",
-			b.Config.Discord.Server,
+			string(b.Config.Discord.Server),
 		)
 	}
 

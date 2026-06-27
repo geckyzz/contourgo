@@ -158,13 +158,13 @@ func (b *DiscordBot) registerSlashCommands(s *discordgo.Session) {
 	}
 
 	// 0. Clean up guild-scoped commands if we are registering global commands but a server ID is configured
-	if guildID == "" && b.Config.Discord.Server != "" {
-		guildCmds, err := s.ApplicationCommands(s.State.User.ID, b.Config.Discord.Server)
+	if guildID == "" && string(b.Config.Discord.Server) != "" {
+		guildCmds, err := s.ApplicationCommands(s.State.User.ID, string(b.Config.Discord.Server))
 		if err == nil && len(guildCmds) > 0 {
 			log.Printf(
 				"Cleaning up %d guild-scoped commands from Server ID: %s",
 				len(guildCmds),
-				b.Config.Discord.Server,
+				string(b.Config.Discord.Server),
 			)
 			for _, gCmd := range guildCmds {
 				log.Printf(
@@ -172,7 +172,11 @@ func (b *DiscordBot) registerSlashCommands(s *discordgo.Session) {
 					gCmd.Name,
 					gCmd.ID,
 				)
-				s.ApplicationCommandDelete(s.State.User.ID, b.Config.Discord.Server, gCmd.ID)
+				s.ApplicationCommandDelete(
+					s.State.User.ID,
+					string(b.Config.Discord.Server),
+					gCmd.ID,
+				)
 			}
 		}
 	}

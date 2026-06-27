@@ -27,7 +27,8 @@ type TsukihimeTorrentCache struct {
 }
 
 func (m *Monitor) checkTsukihime(force bool) {
-	monitorMap, exists := m.config.Monitors["tsukihime"]
+	cfg := m.Config()
+	monitorMap, exists := cfg.Monitors["tsukihime"]
 	if !exists || len(monitorMap) == 0 {
 		return
 	}

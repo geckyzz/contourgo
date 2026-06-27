@@ -10,7 +10,8 @@ import (
 )
 
 func (m *Monitor) checkNekoBT(force bool) {
-	monitorMap, exists := m.config.Monitors["nekobt"]
+	cfg := m.Config()
+	monitorMap, exists := cfg.Monitors["nekobt"]
 	if !exists || len(monitorMap) == 0 {
 		return
 	}
@@ -27,7 +28,7 @@ func (m *Monitor) checkNekoBT(force bool) {
 	}
 
 	log.Println("[NEKOBT] Starting check...")
-	apiKey := m.config.Config.Nekobt.API.Key
+	apiKey := cfg.Config.Nekobt.API.Key
 	scr := scraper.NewNekoBTScraper(apiKey)
 
 	for key, monitorCfg := range monitorMap {

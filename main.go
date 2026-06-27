@@ -84,6 +84,9 @@ func main() {
 	// 4. Start Monitor Loop (in goroutine)
 	mon := monitor.NewMonitor(cfg, database, bot, forceCheckChan)
 	mon.DumpComments = *dumpComments
+	bot.OnConfigReload = func(newCfg *config.Config) {
+		mon.UpdateConfig(newCfg)
+	}
 	go mon.Start()
 
 	// Wait for terminate signals or Ctrl+D on stdin (if run in a terminal)

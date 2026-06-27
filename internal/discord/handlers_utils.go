@@ -38,10 +38,14 @@ func (b *DiscordBot) handleSlashReload(
 			return
 		}
 		b.Config = newCfg
+		b.AnnounceChannel = string(newCfg.Discord.Announce.Channel)
+		if b.OnConfigReload != nil {
+			b.OnConfigReload(newCfg)
+		}
 		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
-				Content: "✅ Main config reloaded (monitors not affected).",
+				Content: "✅ Configuration reloaded successfully.",
 			},
 		})
 	} else {

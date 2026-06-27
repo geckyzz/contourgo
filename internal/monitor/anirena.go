@@ -9,7 +9,8 @@ import (
 )
 
 func (m *Monitor) checkAnirena(force bool) {
-	monitorMap, exists := m.config.Monitors["anirena"]
+	cfg := m.Config()
+	monitorMap, exists := cfg.Monitors["anirena"]
 	if !exists || len(monitorMap) == 0 {
 		return
 	}
@@ -26,7 +27,7 @@ func (m *Monitor) checkAnirena(force bool) {
 	}
 
 	log.Println("[ANIRENA] Starting check...")
-	apiKey := m.config.Config.Anirena.API.Key
+	apiKey := cfg.Config.Anirena.API.Key
 
 	if apiKey == "" {
 		log.Printf("[ANIRENA] Warning: anirena.api.key is not configured, skipping.")

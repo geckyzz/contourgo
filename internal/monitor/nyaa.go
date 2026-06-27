@@ -22,7 +22,8 @@ func (m *Monitor) checkSukebei(force bool) {
 }
 
 func (m *Monitor) checkNyaaSukebeiService(service string, force bool) {
-	monitorMap, exists := m.config.Monitors[service]
+	cfg := m.Config()
+	monitorMap, exists := cfg.Monitors[service]
 	if !exists || len(monitorMap) == 0 {
 		return
 	}
@@ -32,7 +33,7 @@ func (m *Monitor) checkNyaaSukebeiService(service string, force bool) {
 		prefix = "[SUKEBEI]"
 	}
 
-	proxyURL := m.config.Config.Nyaa.Proxy.URL
+	proxyURL := cfg.Config.Nyaa.Proxy.URL
 	if proxyURL == "" {
 		log.Printf("%s Warning: Nyaa proxy URL not configured, skipping.", prefix)
 		return

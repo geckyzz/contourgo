@@ -47,14 +47,15 @@ func (m *Monitor) enqueueAnnouncement(
 ) {
 	if !m.DumpComments {
 		log.Printf("%s Queuing announcement for comment %s on %s", prefix, commentID, torrentID)
+		cfg := m.Config()
 		err := m.bot.EnqueueAnnouncement(
 			service,
-			"",
+			string(monitorCfg.Discord.Channel),
 			torrentID,
 			commentID,
-			m.config.ResolveAuthorURL(monitorCfg),
-			m.config.ResolveCommentID(monitorCfg),
-			m.config.ResolveUserContentImage(monitorCfg),
+			cfg.ResolveAuthorURL(monitorCfg),
+			cfg.ResolveCommentID(monitorCfg),
+			cfg.ResolveUserContentImage(monitorCfg),
 			monitorCfg.Discord.Mentions.Disable,
 		)
 		if err != nil {

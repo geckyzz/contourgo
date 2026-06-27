@@ -20,16 +20,17 @@ func (m *Monitor) checkAnimeToshoNew(force bool) {
 }
 
 func (m *Monitor) checkAnimeToshoService(service string, force bool) {
-	monitorMap, exists := m.config.Monitors[service]
+	cfg := m.Config()
+	monitorMap, exists := cfg.Monitors[service]
 	if !exists || len(monitorMap) == 0 {
 		return
 	}
 
 	prefix := "[ANIMETOSHO-OLD]"
-	globalMaxPages := m.config.Config.Animetosho.Old.Page.Max
+	globalMaxPages := cfg.Config.Animetosho.Old.Page.Max
 	if service == "animetosho_new" {
 		prefix = "[ANIMETOSHO-NEW]"
-		globalMaxPages = m.config.Config.Animetosho.New.Page.Max
+		globalMaxPages = cfg.Config.Animetosho.New.Page.Max
 	}
 
 	hasDueMonitors := false

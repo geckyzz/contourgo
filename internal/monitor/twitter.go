@@ -13,7 +13,8 @@ import (
 // checkTwitter is the entry point called from CheckAll.
 // It follows the exact same structure as checkNyaa, checkNekoBT, etc.
 func (m *Monitor) checkTwitter(force bool) {
-	monitorMap, exists := m.config.Monitors["twitter"]
+	cfg := m.Config()
+	monitorMap, exists := cfg.Monitors["twitter"]
 	if !exists || len(monitorMap) == 0 {
 		return
 	}
@@ -37,13 +38,14 @@ func (m *Monitor) checkTwitterAccount(
 	monitorCfg config.MonitorConfig,
 	scr *scraper.TwitterScraper,
 ) {
+	cfg := m.Config()
 	// Resolve account name: explicit `account` field, falling back to the monitor key.
 	account := monitorCfg.Account
 	if account == "" {
 		account = key
 	}
 
-	nitterBase := m.config.ResolveNitterURL(monitorCfg)
+	nitterBase := cfg.ResolveNitterURL(monitorCfg)
 	rssURL := fmt.Sprintf("%s/%s/rss", nitterBase, account)
 
 	log.Printf("%s Fetching Nitter RSS: %s", prefix, rssURL)
@@ -133,7 +135,7 @@ func (m *Monitor) checkTwitterAccount(
 		}
 
 		pubAt := discord.ParseNitterRSSPubDate(item.PubDate)
-		embedSvc := m.config.ResolveEmbedService(monitorCfg)
+		embedSvc := cfg.ResolveEmbedService(monitorCfg)
 		rewrittenLink := discord.RewriteTweetURL(item.Link, embedSvc)
 		canonicalLink := normaliseToXLink(account, tweetID)
 
@@ -147,7 +149,7 @@ func (m *Monitor) checkTwitterAccount(
 			PublishedAt:  pubAt,
 		}
 
-		channelID := monitorCfg.Discord.Channel
+		channelID := string(monitorCfg.Discord.Channel)
 
 		if !m.DumpComments {
 			log.Printf("%s Announcing tweet %s by @%s", prefix, tweetID, account)
