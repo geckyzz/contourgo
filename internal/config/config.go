@@ -101,6 +101,8 @@ type TwitterConfig struct {
 	// NitterURL is the base URL of the Nitter instance to use (e.g. "https://nitter.net").
 	// Individual monitors may override this.
 	NitterURL string `toml:"nitter_url"`
+	// EmbedService is the global default fix-embed domain/service to use.
+	EmbedService string `toml:"embed_service"`
 }
 
 type MonitorConfig struct {
@@ -463,4 +465,13 @@ func (c *Config) ResolveNitterURL(monitor MonitorConfig) string {
 		return c.Config.Twitter.NitterURL
 	}
 	return "https://nitter.net"
+}
+
+// ResolveEmbedService returns the effective EmbedService for a MonitorConfig entry.
+// Per-monitor embed_service takes precedence over the global config.twitter.embed_service.
+func (c *Config) ResolveEmbedService(monitor MonitorConfig) string {
+	if monitor.EmbedService != "" {
+		return monitor.EmbedService
+	}
+	return c.Config.Twitter.EmbedService
 }

@@ -21,6 +21,7 @@ animetosho.new.page.max = 5
 nekobt.api.key = ""
 anirena.api.key = ""
 twitter.nitter_url = ""
+twitter.embed_service = ""
 
 [monitor.nyaa.normies]
 keywords = ["fansubs", "raws"] # list of keywords to search on nyaa

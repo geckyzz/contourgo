@@ -133,7 +133,8 @@ func (m *Monitor) checkTwitterAccount(
 		}
 
 		pubAt := discord.ParseNitterRSSPubDate(item.PubDate)
-		rewrittenLink := discord.RewriteTweetURL(item.Link, monitorCfg.EmbedService)
+		embedSvc := m.config.ResolveEmbedService(monitorCfg)
+		rewrittenLink := discord.RewriteTweetURL(item.Link, embedSvc)
 		canonicalLink := normaliseToXLink(account, tweetID)
 
 		postData := discord.TwitterPostData{

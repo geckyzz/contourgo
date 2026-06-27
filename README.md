@@ -111,6 +111,7 @@ For initial database seeding without spamming Discord:
 | `config.nekobt.api.key`              | Your nekoBT SSID API key                                | No       | —                    |
 | `config.anirena.api.key`             | Your AniRena API key                                    | No       | —                    |
 | `config.twitter.nitter_url`          | Default base URL of Nitter instance to use              | No       | `https://nitter.net` |
+| `config.twitter.embed_service`       | Default global embed service domain/short-name to use   | No       | `x.com`              |
 
 ### Monitor Blocks (`[monitors.<service>.<key>]`)
 
