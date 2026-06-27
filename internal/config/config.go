@@ -21,6 +21,7 @@ type Config struct {
 	Discord  DiscordConfig                       `toml:"discord"`
 	Config   MainConfig                          `toml:"config"`
 	Monitors map[string]map[string]MonitorConfig `toml:"monitors"`
+	Donation DonationConfig                      `toml:"donation"`
 }
 
 type DiscordConfig struct {
@@ -33,6 +34,33 @@ type DiscordConfig struct {
 	Fields          MonitorFieldsConfig  `toml:"fields"`
 	Display         MonitorDisplayConfig `toml:"display"`
 	MentionsDisable *bool                `toml:"mentions_disable"`
+}
+
+type DonationConfig struct {
+	PerkMultiplier float64            `toml:"perk_multiplier"`  // e.g. 9.99 USD
+	MaxStacks      int                `toml:"max_stacks"`       // e.g. 12 months maximum stack limit
+	Tiers          map[string]float64 `toml:"tiers"`            // Tier RoleID -> Minimum Cumulative USD required
+	NotifyWarnDays int                `toml:"notify_warn_days"` // Days before warning threshold (e.g. 3)
+	Silent         SilentConfig       `toml:"silent"`           // Nested dot-notation configuration for silences
+	Format         DonationFormat     `toml:"format"`           // Configurable DM templates
+}
+
+type SilentConfig struct {
+	Globally  bool `toml:"globally"`   // Mute all DMs
+	OnWarning bool `toml:"on_warning"` // Mute only warning pings
+	OnExpiry  bool `toml:"on_expiry"`  // Mute only expiry DMs
+}
+
+type DonationFormat struct {
+	Add    ActionTemplates `toml:"add"`
+	Renew  ActionTemplates `toml:"renew"`
+	Warn   ActionTemplates `toml:"warn"`
+	Expiry ActionTemplates `toml:"expiry"`
+}
+
+type ActionTemplates struct {
+	Title string `toml:"title"`
+	Desc  string `toml:"desc"`
 }
 
 type AnnounceConfig struct {

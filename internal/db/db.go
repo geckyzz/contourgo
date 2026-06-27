@@ -553,3 +553,204 @@ func (db *DB) GetLatestTweets(limit int) ([]Tweet, error) {
 	}
 	return tweets, nil
 }
+
+// Donator represents a tracked donor on Discord with their active role subscription.
+type Donator struct {
+	UserID     string
+	Username   string
+	TotalUSD   float64
+	ExpiryTime int64
+	WarnedAt   int64
+	UpdatedAt  time.Time
+}
+
+// GetDonator retrieves a donator by their user ID.
+func (db *DB) GetDonator(userID string) (Donator, bool) {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	var d Donator
+	var updatedAtStr string
+	err := db.Conn.QueryRow(
+		`SELECT user_id, username, total_usd, expiry_time, warned_at, updated_at
+		 FROM donators
+		 WHERE user_id = ?`,
+		userID,
+	).Scan(&d.UserID, &d.Username, &d.TotalUSD, &d.ExpiryTime, &d.WarnedAt, &updatedAtStr)
+	if err != nil {
+		return d, false
+	}
+	if t, err := time.Parse("2006-01-02 15:04:05", updatedAtStr); err == nil {
+		d.UpdatedAt = t
+	} else if t, err := time.Parse(time.RFC3339, updatedAtStr); err == nil {
+		d.UpdatedAt = t
+	} else {
+		d.UpdatedAt = time.Now()
+	}
+	return d, true
+}
+
+// UpdateDonator updates or creates a donator entry.
+func (db *DB) UpdateDonator(userID, username string, totalUSD float64, expiryTime int64) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	// When renewing or changing expiry, reset warned_at back to 0
+	_, err := db.Conn.Exec(
+		`INSERT INTO donators (user_id, username, total_usd, expiry_time, warned_at, updated_at)
+		 VALUES (?, ?, ?, ?, 0, CURRENT_TIMESTAMP)
+		 ON CONFLICT(user_id) DO UPDATE SET
+		 	username = excluded.username,
+			total_usd = excluded.total_usd,
+			expiry_time = excluded.expiry_time,
+			warned_at = CASE WHEN expiry_time != donators.expiry_time THEN 0 ELSE donators.warned_at END,
+			updated_at = CURRENT_TIMESTAMP`,
+		userID, username, totalUSD, expiryTime,
+	)
+	return err
+}
+
+// UpdateDonatorWarned sets the warned_at timestamp for a user.
+func (db *DB) UpdateDonatorWarned(userID string, warnedAt int64) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	_, err := db.Conn.Exec(
+		`UPDATE donators SET warned_at = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?`,
+		warnedAt, userID,
+	)
+	return err
+}
+
+// GetExpiredDonators returns donators whose expiry_time is in the past (non-zero) and haven't expired.
+func (db *DB) GetExpiredDonators(now int64) ([]Donator, error) {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	rows, err := db.Conn.Query(
+		`SELECT user_id, username, total_usd, expiry_time, warned_at, updated_at
+		 FROM donators
+		 WHERE expiry_time > 0 AND expiry_time <= ?`,
+		now,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var donators []Donator
+	for rows.Next() {
+		var d Donator
+		var updatedAtStr string
+		if err := rows.Scan(&d.UserID, &d.Username, &d.TotalUSD, &d.ExpiryTime, &d.WarnedAt, &updatedAtStr); err != nil {
+			return nil, err
+		}
+		if t, err := time.Parse("2006-01-02 15:04:05", updatedAtStr); err == nil {
+			d.UpdatedAt = t
+		} else if t, err := time.Parse(time.RFC3339, updatedAtStr); err == nil {
+			d.UpdatedAt = t
+		} else {
+			d.UpdatedAt = time.Now()
+		}
+		donators = append(donators, d)
+	}
+	return donators, nil
+}
+
+// GetActiveDonators returns all active donators (expiry_time > now) sorted by expiry time.
+func (db *DB) GetActiveDonators(now int64) ([]Donator, error) {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	rows, err := db.Conn.Query(
+		`SELECT user_id, username, total_usd, expiry_time, warned_at, updated_at
+		 FROM donators
+		 WHERE expiry_time > ?
+		 ORDER BY expiry_time DESC`,
+		now,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var donators []Donator
+	for rows.Next() {
+		var d Donator
+		var updatedAtStr string
+		if err := rows.Scan(&d.UserID, &d.Username, &d.TotalUSD, &d.ExpiryTime, &d.WarnedAt, &updatedAtStr); err != nil {
+			return nil, err
+		}
+		if t, err := time.Parse("2006-01-02 15:04:05", updatedAtStr); err == nil {
+			d.UpdatedAt = t
+		} else if t, err := time.Parse(time.RFC3339, updatedAtStr); err == nil {
+			d.UpdatedAt = t
+		} else {
+			d.UpdatedAt = time.Now()
+		}
+		donators = append(donators, d)
+	}
+	return donators, nil
+}
+
+// DonationLog represents a logged donation entry in the db.
+type DonationLog struct {
+	ID        int
+	UserID    string
+	Amount    float64
+	Account   string
+	Note      string
+	CreatedAt time.Time
+}
+
+// AddDonationLog stores a detailed log of a contribution.
+func (db *DB) AddDonationLog(userID string, amount float64, account, note string) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	_, err := db.Conn.Exec(
+		`INSERT INTO donation_logs (user_id, amount, account, note, created_at)
+		 VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+		userID, amount, account, note,
+	)
+	return err
+}
+
+// GetDonationLogs retrieves all logs, optionally filtered by user ID.
+func (db *DB) GetDonationLogs(userID string) ([]DonationLog, error) {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	var rows *sql.Rows
+	var err error
+	if userID != "" {
+		rows, err = db.Conn.Query(
+			`SELECT id, user_id, amount, account, note, created_at
+			 FROM donation_logs
+			 WHERE user_id = ?
+			 ORDER BY created_at DESC`,
+			userID,
+		)
+	} else {
+		rows, err = db.Conn.Query(
+			`SELECT id, user_id, amount, account, note, created_at
+			 FROM donation_logs
+			 ORDER BY created_at DESC`,
+		)
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var logs []DonationLog
+	for rows.Next() {
+		var l DonationLog
+		var createdAtStr string
+		if err := rows.Scan(&l.ID, &l.UserID, &l.Amount, &l.Account, &l.Note, &createdAtStr); err != nil {
+			return nil, err
+		}
+		if t, err := time.Parse("2006-01-02 15:04:05", createdAtStr); err == nil {
+			l.CreatedAt = t
+		} else if t, err := time.Parse(time.RFC3339, createdAtStr); err == nil {
+			l.CreatedAt = t
+		} else {
+			l.CreatedAt = time.Now()
+		}
+		logs = append(logs, l)
+	}
+	return logs, nil
+}

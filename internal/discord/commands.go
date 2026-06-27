@@ -148,6 +148,97 @@ func (b *DiscordBot) registerSlashCommands(s *discordgo.Session) {
 			Name:        "update",
 			Description: "Check for updates and update the bot binary if available",
 		},
+		{
+			Name:        "donation",
+			Description: "Manage donator roles and log contributions",
+			Options: []*discordgo.ApplicationCommandOption{
+				{
+					Type:        discordgo.ApplicationCommandOptionSubCommand,
+					Name:        "add",
+					Description: "Log a donation and add/extend role perks (+1 month per $9.99)",
+					Options: []*discordgo.ApplicationCommandOption{
+						{
+							Type:        discordgo.ApplicationCommandOptionUser,
+							Name:        "user",
+							Description: "The Discord user to credit",
+							Required:    true,
+						},
+						{
+							Type:        discordgo.ApplicationCommandOptionNumber,
+							Name:        "amount",
+							Description: "Donation amount in USD",
+							Required:    true,
+						},
+						{
+							Type:        discordgo.ApplicationCommandOptionString,
+							Name:        "account",
+							Description: "Payment method account (e.g. 'PayPal (Proxied)', 'Ethereum')",
+							Required:    false,
+						},
+						{
+							Type:        discordgo.ApplicationCommandOptionString,
+							Name:        "note",
+							Description: "Contribution note/memo details",
+							Required:    false,
+						},
+						{
+							Type:        discordgo.ApplicationCommandOptionString,
+							Name:        "end_date",
+							Description: "Custom end date to import old data (YYYY-MM-DD or 'July 17')",
+							Required:    false,
+						},
+						{
+							Type:        discordgo.ApplicationCommandOptionString,
+							Name:        "silent",
+							Description: "Silence specific or all DM notifications (defaults to none)",
+							Required:    false,
+							Choices: []*discordgo.ApplicationCommandOptionChoice{
+								{Name: "Silence All notifications", Value: "all"},
+								{Name: "Silence Only donation add DM", Value: "only-add"},
+								{Name: "Silence Only warning DM", Value: "on-warning"},
+								{Name: "Silence Only expiry DM", Value: "on-expiry"},
+							},
+						},
+					},
+				},
+				{
+					Type:        discordgo.ApplicationCommandOptionSubCommand,
+					Name:        "status",
+					Description: "View donation subscription status for a user",
+					Options: []*discordgo.ApplicationCommandOption{
+						{
+							Type:        discordgo.ApplicationCommandOptionUser,
+							Name:        "user",
+							Description: "The Discord user to inspect",
+							Required:    true,
+						},
+					},
+				},
+				{
+					Type:        discordgo.ApplicationCommandOptionSubCommand,
+					Name:        "list",
+					Description: "List all active donators and their role expiry times",
+				},
+				{
+					Type:        discordgo.ApplicationCommandOptionSubCommand,
+					Name:        "export",
+					Description: "Export all raw donation logs in TSV format as a file attachment",
+					Options: []*discordgo.ApplicationCommandOption{
+						{
+							Type:        discordgo.ApplicationCommandOptionUser,
+							Name:        "user",
+							Description: "Filter logs by a specific user (optional)",
+							Required:    false,
+						},
+					},
+				},
+				{
+					Type:        discordgo.ApplicationCommandOptionSubCommand,
+					Name:        "check",
+					Description: "Manually trigger checking for and clearing expired donator roles",
+				},
+			},
+		},
 	}
 
 	// Fetch existing commands (guild-specific if guildID is set, otherwise global)
@@ -421,6 +512,9 @@ func (b *DiscordBot) onInteractionCreate(s *discordgo.Session, i *discordgo.Inte
 	case "update":
 		log.Printf("[Action] Processing update command")
 		b.handleSlashUpdate(s, i)
+	case "donation":
+		log.Printf("[Action] Processing donation command")
+		b.handleSlashDonation(s, i, optionMap)
 	}
 }
 

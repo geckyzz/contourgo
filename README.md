@@ -8,35 +8,31 @@ torrent trackers. Designed to be a robust, always-online replacement for legacy 
 
 ## 🚀 Features
 
-- **Multi-Site Monitoring**: Support for **Nyaa/Sukebei**, **AnimeTosho**
-  (old/`.org` and new/clone/`.xyz`), **nekoBT**, **AniRena**, **TsukiHime**, and
-  **Twitter/X** (via Nitter RSS).
-- **Twitter/X Monitoring**: Poll any public Twitter account via a [Nitter](https://github.com/zedeus/nitter)
-  RSS feed. Supports per-account:
-  - **Embed services**: Rewrite tweet links to `fixupx.com`, `vxtwitter.com`, `fxtwitter.com`,
-    `twittpr.com`, or any custom domain for better Discord preview support.
-  - **Custom message format**: Use Go template placeholders (`{{.Account}}`, `{{.Link}}`, etc.)
-    to send a plain content message instead of an embed.
-  - **Target channel override**: Route announcements to a specific channel per account.
-  - **Per-account poll interval**: Independent `monitor.by` for each account.
-  - **Regex filtering**: Optional case-insensitive regular expressions matching for `keywords` and `excludes`.
-- **Parallel Architecture**: Utilizes Go routines to check all active services simultaneously, maximizing
-  throughput and minimizing check cycle duration.
-- **Smart Filtering**:
-  - **Keywords**: Monitor specific search terms across all services (supports regex on Twitter).
-  - **Uploaders**: (Nyaa/Sukebei, nekoBT, AniRena) Monitor all releases or comments from specific users.
-  - **Groups**: (nekoBT, AniRena, TsukiHime) Monitor specific fansub groups.
-  - **Media**: (nekoBT, TsukiHime) Monitor specific series or movies by ID.
-    - **nekoBT**: Supports `tmdb:`, `tvdb:`, or media slug.
-    - **TsukiHime**: Supports `mal:`, `anilist:`, `anidb:`, or internal ID (e.g., `79`).
-  - **Exclusions**: Skip torrents matching glob patterns (e.g., `*[REPACK]*`).
-- **Rich Notifications**: Beautiful Discord embeds with author info, truncated parent comment context
-  for replies, and direct links.
-- **Adaptive Help**: An interactive `/help` menu that dynamically links to actual slash commands
-  registered in your session.
-- **Persistent History**: Backed by SQLite to ensure no comment is announced twice.
-- **Migration Support**: Built-in `/import` command to seamlessly migrate history from
-  [nyaa_comments][nc].
+- **Multi-Site Monitoring**: Support for Nyaa/Sukebei, AnimeTosho (old/`.org` and new/clone/`.xyz`), nekoBT, AniRena, TsukiHime, and Twitter/X (via Nitter RSS).
+- **Twitter/X Monitoring**: Poll public Twitter accounts via Nitter RSS feeds. Supports per-account:
+  - **Embed services**: Rewrite tweet links to `fixupx.com`, `vxtwitter.com`, `fxtwitter.com`, `twittpr.com`, or custom domains for Discord previews.
+  - **Custom message format**: Go template placeholders (`{{.Account}}`, `{{.Link}}`, etc.) to format text messages instead of default embeds.
+  - **Target channel override**: Send announcements to a specific Discord channel per account.
+  - **Per-account poll interval**: Independent check frequencies (`monitor.by`).
+  - **Regex filtering**: Match or ignore tweets using case-insensitive regular expressions (`keywords` and `excludes`).
+- **Concurrent Polling**: Utilizes Go routines to check active services in parallel.
+- **Scraper Filtering**:
+  - **Keywords**: Filter releases or comments by search strings (regex-compatible for Twitter).
+  - **Uploaders**: Filter releases or comments by specific users (supported on Nyaa/Sukebei, nekoBT, AniRena).
+  - **Groups**: Filter by fansub groups (supported on nekoBT, AniRena, TsukiHime).
+  - **Media**: Filter by Series/Movie IDs (supported on nekoBT, TsukiHime).
+    - nekoBT: Supports `tmdb:`, `tvdb:`, or internal IDs.
+    - TsukiHime: Supports `mal:`, `anilist:`, `anidb:`, or internal IDs.
+  - **Exclusions**: Skip items matching glob patterns (e.g. `*[REPACK]*`).
+- **Discord Notifications**: Send Discord messages containing author details, formatted parent comment context for replies, and source links.
+- **Dynamic Help Menu**: Interactive `/help` command displaying links to slash commands registered in the current bot session.
+- **SQLite History**: Track comment states in SQLite to prevent duplicate announcements.
+- **Migration Utilities**: Command `/import` to load comments from legacy json files.
+- **Donation Role Manager**: Log contributions and manage server rewards:
+  - Stackable subscription durations based on dollar value configurations (e.g. $9.99/mo).
+  - Multi-tier server role assignments mapped by cumulative USD donation thresholds.
+  - Check cycles to clear expired roles and send notification embeds.
+  - Silent controls (globally or per command option) and transaction logs export in TSV format.
 
 [nc]: https://github.com/geckyzz/nyaa_comments
 
@@ -112,67 +108,101 @@ For initial database seeding without spamming Discord:
 
 ### Global Config
 
-| Key                                  | Type       | Description                                             | Required | Default              |
-| :----------------------------------- | :--------- | :------------------------------------------------------ | :------- | :------------------- |
-| **Discord Credentials & Setup**      |            |                                                         |          |                      |
-| `discord.token`                      | String     | Your Discord Bot Token                                  | Yes      | —                    |
-| `discord.server`                     | String/Int | Target server snowflake for instant command sync        | No       | —                    |
-| `discord.announce.channel`           | String/Int | Discord channel snowflake for notifications             | Yes      | —                    |
-| `discord.mentions_disable`           | Boolean    | Toggle to disable all mentions globally                 | No       | `false`              |
-| **Mentions Mapping**                 |            |                                                         |          |                      |
-| `discord.mentions`                   | Table/Map  | Map `@name` to `<@snowflake>` in message content        | No       | —                    |
-| **Embed Layout & Styling**           |            |                                                         |          |                      |
-| `discord.embed.author.url`           | String     | Global default static icon for the embed author         | No       | —                    |
-| `discord.fields.comment_id`          | Boolean    | Global default to toggle rendering comment ID           | No       | `false`              |
-| `discord.display.user_content_image` | Boolean    | Global default to toggle extracting user content images | No       | `false`              |
-| **Scraper Scheduling**               |            |                                                         |          |                      |
-| `config.monitor.by`                  | String     | Check interval (e.g., `PT10M` or `10m`)                 | No       | `PT30M`              |
-| `config.time.uniform`                | Boolean    | Align check schedules to interval boundaries            | No       | `false`              |
-| **Service Integration APIs**         |            |                                                         |          |                      |
-| `config.nyaa.proxy.url`              | String     | URL to your Nyaa/Sukebei API Proxy                      | Yes      | —                    |
-| `config.nyaa.page.max`               | Integer    | Nyaa platform default page limit                        | No       | `0`                  |
-| `config.nyaa.sort`                   | String     | Nyaa platform default sort method                       | No       | `"comments"`         |
-| `config.nyaa.order`                  | String     | Nyaa platform default sort order                        | No       | `"desc"`             |
-| `config.nekobt.api.key`              | String     | Your nekoBT SSID API key                                | No       | —                    |
-| `config.nekobt.page.max`             | Integer    | nekoBT platform default page limit                      | No       | `1`                  |
-| `config.nekobt.sort`                 | String     | nekoBT platform default sort method                     | No       | `"date"`             |
-| `config.anirena.api.key`             | String     | Your AniRena API key                                    | No       | —                    |
-| `config.anirena.page.max`            | Integer    | AniRena platform default page limit                     | No       | `0`                  |
-| `config.anirena.sort`                | String     | AniRena platform default sort method                    | No       | `"date"`             |
-| `config.anirena.order`               | String     | AniRena platform default sort order                     | No       | `"desc"`             |
-| `config.twitter.nitter_url`          | String     | Default base URL of Nitter instance to use              | No       | `https://nitter.net` |
-| `config.twitter.embed_service`       | String     | Default global embed service domain/short-name to use   | No       | `x.com`              |
-| `config.twitter.exclude_reposts`     | Boolean    | Default global setting to ignore retweet/repost items   | No       | `false`              |
+| Key                                  | Type       | Description                                              | Required | Default              |
+| :----------------------------------- | :--------- | :------------------------------------------------------- | :------- | :------------------- |
+| **Discord Credentials & Setup**      |            |                                                          |          |                      |
+| `discord.token`                      | String     | Your Discord Bot Token                                   | Yes      | —                    |
+| `discord.server`                     | String/Int | Target server snowflake for instant command sync         | No       | —                    |
+| `discord.announce.channel`           | String/Int | Discord channel snowflake for notifications              | Yes      | —                    |
+| `discord.mentions_disable`           | Boolean    | Toggle to disable all mentions globally                  | No       | `false`              |
+| **Mentions Mapping**                 |            |                                                          |          |                      |
+| `discord.mentions`                   | Table/Map  | Map `@name` to `<@snowflake>` in message content         | No       | —                    |
+| **Embed Layout & Styling**           |            |                                                          |          |                      |
+| `discord.embed.author.url`           | String     | Global default static icon for the embed author          | No       | —                    |
+| `discord.fields.comment_id`          | Boolean    | Global default to toggle rendering comment ID            | No       | `false`              |
+| `discord.display.user_content_image` | Boolean    | Global default to toggle extracting user content images  | No       | `false`              |
+| **Scraper Scheduling**               |            |                                                          |          |                      |
+| `config.monitor.by`                  | String     | Check interval (e.g., `PT10M` or `10m`)                  | No       | `PT30M`              |
+| `config.time.uniform`                | Boolean    | Align check schedules to interval boundaries             | No       | `false`              |
+| **Service Integration APIs**         |            |                                                          |          |                      |
+| `config.nyaa.proxy.url`              | String     | URL to your Nyaa/Sukebei API Proxy                       | Yes      | —                    |
+| `config.nyaa.page.max`               | Integer    | Nyaa platform default page limit                         | No       | `0`                  |
+| `config.nyaa.sort`                   | String     | Nyaa platform default sort method                        | No       | `"comments"`         |
+| `config.nyaa.order`                  | String     | Nyaa platform default sort order                         | No       | `"desc"`             |
+| `config.nekobt.api.key`              | String     | Your nekoBT SSID API key                                 | No       | —                    |
+| `config.nekobt.page.max`             | Integer    | nekoBT platform default page limit                       | No       | `1`                  |
+| `config.nekobt.sort`                 | String     | nekoBT platform default sort method                      | No       | `"date"`             |
+| `config.anirena.api.key`             | String     | Your AniRena API key                                     | No       | —                    |
+| `config.anirena.page.max`            | Integer    | AniRena platform default page limit                      | No       | `0`                  |
+| `config.anirena.sort`                | String     | AniRena platform default sort method                     | No       | `"date"`             |
+| `config.anirena.order`               | String     | AniRena platform default sort order                      | No       | `"desc"`             |
+| `config.twitter.nitter_url`          | String     | Default base URL of Nitter instance to use               | No       | `https://nitter.net` |
+| `config.twitter.embed_service`       | String     | Default global embed service domain/short-name to use    | No       | `x.com`              |
+| `config.twitter.exclude_reposts`     | Boolean    | Default global setting to ignore retweet/repost items    | No       | `false`              |
+| **Donation Management**              |            |                                                          |          |                      |
+| `donation.perk_multiplier`           | Float      | USD cost per 1 month of role perks duration              | No       | `9.99`               |
+| `donation.max_stacks`                | Integer    | Max months perk duration stack limit                     | No       | `12`                 |
+| `donation.notify_warn_days`          | Integer    | Days before expiry to send warning notification          | No       | `3`                  |
+| `donation.silent.globally`           | Boolean    | Suppress all donator DMs globally                        | No       | `false`              |
+| `donation.silent.on_warning`         | Boolean    | Suppress warning DM notifications                        | No       | `false`              |
+| `donation.silent.on_expiry`          | Boolean    | Suppress expiry DM notifications                         | No       | `false`              |
+| `donation.tiers`                     | Map/Table  | Multi-tier role mappings: `RoleID = MinAmountUSD`        | No       | —                    |
+| **DM Notification Formats**          |            |                                                          |          |                      |
+| `donation.format.add.title`          | String     | Go template for donation activation DM Embed Title       | No       | _(Default Text)_     |
+| `donation.format.add.desc`           | String     | Go template for donation activation DM Embed Description | No       | _(Default Text)_     |
+| `donation.format.renew.title`        | String     | Go template for renewal/extension DM Embed Title         | No       | _(Default Text)_     |
+| `donation.format.renew.desc`         | String     | Go template for renewal/extension DM Embed Description   | No       | _(Default Text)_     |
+| `donation.format.warn.title`         | String     | Go template for warning expiration DM Embed Title        | No       | _(Default Text)_     |
+| `donation.format.warn.desc`          | String     | Go template for warning expiration DM Embed Description  | No       | _(Default Text)_     |
+| `donation.format.expiry.title`       | String     | Go template for final expiry DM Embed Title              | No       | _(Default Text)_     |
+| `donation.format.expiry.desc`        | String     | Go template for final expiry DM Embed Description        | No       | _(Default Text)_     |
+
+#### DM Notification Placeholders
+
+When customizing DM notification messages under `[donation.format.<action>]`, you can use the following Go template placeholder keys:
+
+| Placeholder            | Description                                                         | Example Output       |
+| :--------------------- | :------------------------------------------------------------------ | :------------------- |
+| `{{.Username}}`        | Discord display username of the donator user                        | `geckyzz`            |
+| `{{.UserID}}`          | Discord numeric snowflake ID of the donator user                    | `123456789012345678` |
+| `{{.Amount}}`          | Formatted currency string added (e.g. `amount` + `USD`)             | `$9.99 USD`          |
+| `{{.AmountValue}}`     | Raw float value of the current transaction amount                   | `9.99`               |
+| `{{.Cumulative}}`      | Cumulative formatted donation total (e.g. total cumulative + `USD`) | `$19.98 USD`         |
+| `{{.CumulativeValue}}` | Raw float value of cumulative donation total                        | `19.98`              |
+| `{{.Duration}}`        | Formatted text representation of added time                         | `30 days`            |
+| `{{.Expiry}}`          | Full human-readable target date string                              | `January 2, 2026`    |
+| `{{.ExpiryUnix}}`      | Raw Unix epoch integer timestamp of the expiry date                 | `1767344400`         |
+| `{{.TimeLeft}}`        | Time left remaining (Only supported for warning DMs)                | `2 days, 23 hours`   |
 
 ### Monitor Blocks (`[monitors.<service>.<key>]`)
 
 You can define multiple monitors per service.
 
-| Option                                | Type          | Description                                                               | Required | Default       | Supported Services            |
-| :------------------------------------ | :------------ | :------------------------------------------------------------------------ | :------- | :------------ | :---------------------------- |
-| **Torrent Filters**                   |               |                                                                           |          |               |                               |
-| `keywords`                            | List (String) | List of search strings (regex-compatible for Twitter)                     | No       | `[]`          | All                           |
-| `excludes`                            | List (String) | List of glob patterns (regex-compatible for Twitter) to skip              | No       | `[]`          | All                           |
-| `uploaders`                           | List (String) | List of uploader usernames or IDs                                         | No       | `[]`          | Nyaa/Sukebei, nekoBT, AniRena |
-| `groups`                              | List (String) | List of Group IDs or Group Slugs                                          | No       | `[]`          | nekoBT, AniRena, TsukiHime    |
-| `media`                               | List (String) | List of Media IDs                                                         | No       | `[]`          | nekoBT, TsukiHime             |
-| **Query & Scraper Behavior**          |               |                                                                           |          |               |                               |
-| `sort`                                | String        | Sorting method (see below)                                                | No       | _(Varies)_    | Nyaa/Sukebei, nekoBT, AniRena |
-| `order`                               | String        | `asc` or `desc`                                                           | No       | `desc`        | Nyaa/Sukebei, AniRena         |
-| `page.max`                            | Integer       | Max pages to scan per check                                               | No       | `5`           | All                           |
-| `monitor.by`                          | String        | Poll interval override for this monitor (e.g. `PT15M` or `15m`)           | No       | _(Inherit)_   | All                           |
-| **Discord Customization & Overrides** |               |                                                                           |          |               |                               |
-| `discord.mentions.disable`            | Boolean       | Toggle to disable all pings for this monitor                              | No       | `false`       | All                           |
-| `discord.channel`                     | String/Int    | Discord channel override for announcements                                | No       | _(Inherit)_   | All                           |
-| `discord.embed.author.url`            | String        | Static icon for the embed author (overrides global default)               | No       | _(Inherit)_   | All                           |
-| `discord.fields.comment_id`           | Boolean       | Toggle rendering comment ID in embed (overrides global default)           | No       | _(Inherit)_   | All                           |
-| `discord.display.user_content_image`  | Boolean       | Toggle extracting images from comment text to embeds (overrides global)   | No       | _(Inherit)_   | All                           |
-| **Twitter/X Settings**                |               |                                                                           |          |               |                               |
-| `account`                             | String        | Twitter username (without @); defaults to monitor key                     | No       | _(Keyname)_   | twitter                       |
-| `exclude_reposts`                     | Boolean       | Ignore retweet/repost items (starts with "RT by @")                       | No       | `false`       | twitter                       |
-| `nitter_url`                          | String        | Override global Nitter base URL for this monitor                          | No       | _(Inherit)_   | twitter                       |
-| `embed_service`                       | String        | Rewrite tweet links for Discord preview (see embed services table below). | No       | `x.com`       | twitter                       |
-| `custom_format`                       | String        | Go template string for content override (see placeholders table below).   | No       | _(Tweet URL)_ | twitter                       |
+| Option                                | Type          | Description                                                               | Required | Default       | Supported Services                                   |
+| :------------------------------------ | :------------ | :------------------------------------------------------------------------ | :------- | :------------ | :--------------------------------------------------- |
+| **Torrent Filters**                   |               |                                                                           |          |               |                                                      |
+| `keywords`                            | List (String) | List of search strings (or regex for Twitter)                             | No       | `[]`          | All                                                  |
+| `excludes`                            | List (String) | List of glob patterns (or regex for Twitter) to skip                      | No       | `[]`          | All                                                  |
+| `uploaders`                           | List (String) | List of uploader usernames or IDs                                         | No       | `[]`          | Nyaa/Sukebei, nekoBT, AniRena                        |
+| `groups`                              | List (String) | List of Group IDs or Group Slugs                                          | No       | `[]`          | nekoBT, AniRena, TsukiHime                           |
+| `media`                               | List (String) | List of Media IDs                                                         | No       | `[]`          | nekoBT, TsukiHime                                    |
+| **Query & Scraper Behavior**          |               |                                                                           |          |               |                                                      |
+| `sort`                                | String        | Sorting method (see below)                                                | No       | _(Varies)_    | Nyaa/Sukebei, nekoBT, AniRena                        |
+| `order`                               | String        | `asc` or `desc`                                                           | No       | `desc`        | Nyaa/Sukebei, AniRena                                |
+| `page.max`                            | Integer       | Max pages to scan per check                                               | No       | `5`           | Nyaa/Sukebei, nekoBT, AniRena, Tsukihime, AnimeTosho |
+| `monitor.by`                          | String        | Poll interval override for this monitor (e.g. `PT15M` or `15m`)           | No       | _(Inherit)_   | All                                                  |
+| **Discord Customization & Overrides** |               |                                                                           |          |               |                                                      |
+| `discord.mentions.disable`            | Boolean       | Toggle to disable all pings for this monitor                              | No       | `false`       | Nyaa/Sukebei, nekoBT, AniRena, Tsukihime, AnimeTosho |
+| `discord.channel`                     | String/Int    | Discord channel override for announcements                                | No       | _(Inherit)_   | All                                                  |
+| `discord.embed.author.url`            | String        | Static icon for the embed author (overrides global default)               | No       | _(Inherit)_   | Nyaa/Sukebei, nekoBT, AniRena, Tsukihime, AnimeTosho |
+| `discord.fields.comment_id`           | Boolean       | Toggle rendering comment ID in embed (overrides global default)           | No       | _(Inherit)_   | Nyaa/Sukebei, nekoBT, AniRena, Tsukihime, AnimeTosho |
+| `discord.display.user_content_image`  | Boolean       | Toggle extracting images from comment text to embeds (overrides global)   | No       | _(Inherit)_   | Nyaa/Sukebei, nekoBT, AniRena, Tsukihime, AnimeTosho |
+| **Twitter/X Settings**                |               |                                                                           |          |               |                                                      |
+| `account`                             | String        | Twitter username (without @); defaults to monitor key                     | No       | _(Keyname)_   | twitter                                              |
+| `exclude_reposts`                     | Boolean       | Ignore retweet/repost items (starts with "RT by @")                       | No       | `false`       | twitter                                              |
+| `nitter_url`                          | String        | Override global Nitter base URL for this monitor                          | No       | _(Inherit)_   | twitter                                              |
+| `embed_service`                       | String        | Rewrite tweet links for Discord preview (see embed services table below). | No       | `x.com`       | twitter                                              |
+| `custom_format`                       | String        | Go template string for content override (see placeholders table below).   | No       | _(Tweet URL)_ | twitter                                              |
 
 **Supported Services**: `nyaa`, `sukebei`, `animetosho_old`, `animetosho_new`, `nekobt`, `anirena`,
 `tsukihime`, `twitter`.
@@ -281,6 +311,12 @@ If the bot is booted at **`00:05`**:
 - `/latest` - Show recently discovered torrents.
 - `/import` - Migrate legacy JSON data (supports key-based decryption).
 - `/test` - Debug a search query against any service.
+- `/donation` - Manage server donation logs and roles:
+  - `add <user> <amount> [account] [note] [end_date] [silent]` - Log a donation, add stacked duration (multiplier $9.99), sync multi-tier roles, and send DM (silence-able).
+  - `status <user>` - View a user's active/expired state, remaining duration, and total contributions.
+  - `list` - List all active donators, total USD contribution, and active time-left.
+  - `export [user]` - Export raw donation logs in TSV format as a download attachment.
+  - `check` - Force an expiration cycle evaluation immediately.
 - `/help` - Interactive, linked command menu.
 
 ---

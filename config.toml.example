@@ -1,77 +1,139 @@
+# ─── Discord Bot Integration ──────────────────────────────────────────────────
+# Global settings for the Discord gateway, channel announcements, and pings:
+#   token                      - Bot token used for Discord authentication (required)
+#   server                     - Guild server ID target for hot command sync (optional)
+#   - - - - - - - - - - - - - -
+#   announce.channel           - Default channel ID where announcements are sent (required)
+#   - - - - - - - - - - - - - -
+#   mentions                   - Map of "@username" strings to Discord User snowflakes
+#   mentions_disable           - Switch to disable all mentions and user pings globally (default: false)
+#   - - - - - - - - - - - - - -
+#   members.admins.allow       - Permit command access to server admins (default: true)
+#   members.moderators.allow   - Permit command access to server managers (default: false)
+#   members.others.allow       - Whitelist of user IDs permitted to run bot commands (default: [])
+#   - - - - - - - - - - - - - -
+#   embed.author.url           - Icon image URL displayed on announcement embeds (optional)
+#   fields.comment_id          - Display the comment ID on tracker embeds (default: false)
+#   display.user_content_image - Render image attachments in comment embeds (default: false)
+#   - - - - - - - - - - - - - -
 [discord]
-# The Discord Bot authentication token used to log in
 token = "MTM....."
-
-# The Discord server snowflake ID (guild ID) the bot is hosted on
 server = "1326230604295180423"
-
-# Map plain-text @name in feed comments to <@snowflake> Discord pings (supports string/int values)
-mentions = { "geckyzz" = 123456789012345678 }
-
-# The default target channel snowflake ID for bot announcement messages
 announce.channel = "1234567890"
-
-# Master switch to disable/silence all mentions and user pings globally
+mentions = { "geckyzz" = 123456789012345678 }
 mentions_disable = false
-
-# Grant bot command access to all server administrators (other than the bot owner)
 members.admins.allow = true
-
-# Grant bot command access to all server members who have 'Manage Messages' permission
 members.moderators.allow = false
-
-# Whitelist of specific user snowflake IDs allowed to interact with the bot
 members.others.allow = []
 
-# Global Discord Embed defaults (overridable per monitor)
-# embed.author.url = "https://i.imgur.com/some-global-author-image.png" # Global default author icon URL
-# fields.comment_id = false                                              # Toggle display of comment ID field
-# display.user_content_image = false                                     # Toggle rendering of comment attachments/images
+# ─── Donation Management ────────────────────────────────────────────────────────
+# Donation settings manage server roles, transaction logs, and notification DMs:
+#   perk_multiplier   - Amount in USD per 1 month of active perk duration (default: 9.99)
+#   max_stacks        - Maximum cumulative months of duration that can be queued (default: 12)
+#   notify_warn_days  - Days remaining before expiration to send warning pings (0 to disable, default: 3)
+#   silent.globally   - Disable all automated donator DM notifications (default: false)
+#   silent.on_warning - Disable warnings sent prior to role expiration (default: false)
+#   silent.on_expiry  - Disable final role expiration DM notices (default: false)
+#   [donation.tiers]  - Multi-tier dynamic rewards mapping Role ID = Cumulative USD Threshold
+#
+[donation]
+perk_multiplier = 9.99
+max_stacks = 12
+notify_warn_days = 3
+silent.globally = false
+silent.on_warning = false
+silent.on_expiry = false
 
+[donation.tiers]
+"1326239425612611604" = 9.99
+"1400000000000000000" = 50.00
+
+# ┈-┈ Customizable DM Notification Templates ┈-┈
+# Configure customized text values for direct messaging notifications:
+#   Supported Placeholders:
+#     - {{.Username}}        - Discord display username of the donator user
+#     - {{.UserID}}          - Discord numeric snowflake ID of the donator user
+#     - {{.Amount}}          - Formatted currency string added (e.g. "$9.99 USD")
+#     - {{.AmountValue}}     - Raw float value of the current transaction amount
+#     - {{.Cumulative}}      - Cumulative formatted donation total (e.g. "$19.98 USD")
+#     - {{.CumulativeValue}} - Raw float value of cumulative donation total
+#     - {{.Duration}}        - Formatted text representation of added time (e.g. "30 days")
+#     - {{.Expiry}}          - Full human-readable target date string (e.g. "January 2, 2026")
+#     - {{.ExpiryUnix}}      - Raw Unix epoch integer timestamp of the expiry date
+#     - {{.TimeLeft}}        - Time left remaining (Only for Warning DMs)
+#
+[donation.format.add]
+title = "💖 Donation Received & Perks Activated!"
+desc = "Thank you so much for your support {{.Username}}! Your donation of {{.Amount}} has been recorded, and your perks are now active until <t:{{.ExpiryUnix}}:f> (<t:{{.ExpiryUnix}}:R>)."
+
+[donation.format.renew]
+title = "🔁 Perks Renewed & Subscription Extended!"
+desc = "Thank you so much for renewing your support, {{.Username}}! We've extended your perks for another {{.Duration}}. Your new expiry date is <t:{{.ExpiryUnix}}:f> (<t:{{.ExpiryUnix}}:R>)."
+
+[donation.format.warn]
+title = "⚠️ Donator Perks Expiring Soon"
+desc = "Your donator perks will expire on <t:{{.ExpiryUnix}}:f> (<t:{{.ExpiryUnix}}:R>). Renew your subscription to keep access!"
+
+[donation.format.expiry]
+title = "🔒 Donator Perks Expired"
+desc = "Hello {{.Username}}, your donator role subscription expired at <t:{{.ExpiryUnix}}:f>, and your perks have been disabled. We want to thank you sincerely for supporting the cause!"
+
+
+# ─── Scraper Engine Defaults ──────────────────────────────────────────────────
+# Global values and scraper intervals used across active tracker monitors:
+#   monitor.by              - Global poll cadence check frequency (default: "PT30M")
+#   time.uniform            - Align scheduler runs to clean time divisions (default: false)
+#   - - - - - - - - - - - - - -
+#   nyaa.proxy.url          - Base URL to your nyaa-api-worker service (required)
+#   nyaa.page.max           - Pages to scan on checking Nyaa (default: 0)
+#   nyaa.sort               - Nyaa release search sorting field (default: "comments")
+#   nyaa.order              - Nyaa sort direction (default: "desc")
+#   - - - - - - - - - - - - - -
+#   animetosho.old.page.max - Pages to check on animetosho_old (default: 5)
+#   animetosho.new.page.max - Pages to check on animetosho_new (default: 5)
+#   - - - - - - - - - - - - - -
+#   nekobt.api.key          - Your nekoBT API/SSID auth key (optional)
+#   nekobt.page.max         - Pages to check on nekoBT checks (default: 1)
+#   nekobt.sort             - Sort mode on nekoBT queries (default: "date")
+#   - - - - - - - - - - - - - -
+#   anirena.api.key         - Your AniRena API credential key (optional)
+#   anirena.page.max        - Pages to check on AniRena checks (default: 0)
+#   anirena.sort            - Sort mode on AniRena queries (default: "date")
+#   anirena.order           - Sort direction on AniRena checks (default: "desc")
+#   - - - - - - - - - - - - - -
+#   twitter.nitter_url      - Default Nitter instance base URL (default: "https://nitter.net")
+#   twitter.embed_service   - Domain rewrite used to preview tweet links (default: "x.com")
+#   twitter.exclude_reposts - Skip retweets matching RT format (default: false)
+#
 [config]
-# Default check interval/cadence for monitors (ISO 8601 duration e.g. "PT30M" or Go time string "30m")
 monitor.by = "PT30M"
-
-# Align polling checks to the closest tens of minutes (e.g. 00:35 is rounded to 00:40) to cluster checks
 time.uniform = false
-
-# Nyaa / Sukebei platform defaults
-nyaa.proxy.url = "" # Your nyaa-api-worker base url
+nyaa.proxy.url = ""
 nyaa.page.max = 0
 nyaa.sort = "comments"
 nyaa.order = "desc"
-
-# AnimeTosho platform defaults
 animetosho.old.page.max = 5
 animetosho.new.page.max = 5
-
-# NekoBT platform defaults
 nekobt.api.key = ""
 nekobt.page.max = 1
 nekobt.sort = "date"
-
-# AniRena platform defaults
 anirena.api.key = ""
 anirena.page.max = 0
 anirena.sort = "date"
 anirena.order = "desc"
-
-# Twitter / Nitter platform defaults
 twitter.nitter_url = ""
 twitter.embed_service = ""
 twitter.exclude_reposts = false
 
 # ─── Nyaa / Sukebei Tracker ────────────────────────────────────────────────────
 # Nyaa/Sukebei monitors live under [monitor.nyaa.<key>] and [monitor.sukebei.<key>] and support:
-#   keywords        - List of query keywords to search (optional)
-#   uploaders       - List of uploaders/users to filter by (optional)
-#   excludes        - List of glob-like patterns to exclude by title (optional)
-#   sort            - Sort method: comments, size, id, seeders, leechers, downloads (optional, defaults to config level or "comments")
-#   order           - Sort order: desc, asc (optional, defaults to config level or "desc")
-#   page.max        - Max number of search pages to parse (optional, defaults to config level or 0 for unlimited)
-#   discord.channel - Override target Discord channel snowflake (optional)
-#   discord.mentions.disable - Disable mentions for this monitor (optional)
-
+#   keywords                 - List of query keywords to search (optional)
+#   excludes                 - List of glob-like patterns to exclude by title (optional)
+#   uploaders                - List of uploaders/users to filter by (optional)
+#   sort                     - Sort method: comments, size, id, seeders, leechers, downloads (optional, defaults to config level or "comments")
+#   order                    - Sort order: desc, asc (optional, defaults to config level or "desc")
+#   page.max                 - Max number of search pages to parse (optional, defaults to config level or 0 for unlimited)
+#
 [monitor.nyaa.normies]
 keywords = ["fansubs", "raws"]
 uploaders = ["username1", "username2"]
@@ -95,8 +157,7 @@ discord.embed.author.url = "https://i.imgur.com/some-sukebei-image.png"
 #   keywords        - List of query keywords to match (optional)
 #   excludes        - List of glob-like patterns to exclude by title (optional)
 #   page.max        - Max number of pages to parse (optional, defaults to config level)
-#   discord.channel - Override target Discord channel snowflake (optional)
-
+#
 [monitor.animetosho_new.all]
 keywords = ["Gecko"]
 page.max = 5
@@ -116,8 +177,7 @@ discord.embed.author.url = "https://i.imgur.com/some-at-image.png"
 #   excludes        - List of glob-like patterns to exclude by title (optional)
 #   sort            - Sort method: best, latest, oldest, rss, seeders, downloads, comments, etc. (optional, defaults to config level or "date")
 #   page.max        - Max number of pages to parse (optional, defaults to config level or 1)
-#   discord.channel - Override target Discord channel snowflake (optional)
-
+#
 [monitor.nekobt.my_group]
 groups = ["12345"]
 uploaders = ["67890"]
@@ -134,8 +194,7 @@ discord.embed.author.url = "https://i.imgur.com/some-nekobt-image.png"
 #   sort            - Sort method: comments, size, id, seeders, leechers, downloads (optional, defaults to config level or "date")
 #   order           - Sort order: desc, asc (optional, defaults to config level or "desc")
 #   page.max        - Max number of pages to parse (optional, defaults to config level or 0 for unlimited)
-#   discord.channel - Override target Discord channel snowflake (optional)
-
+#
 [monitor.anirena.normies]
 keywords = ["fansubs", "raws"]
 uploaders = ["username1"]
@@ -152,8 +211,7 @@ discord.embed.author.url = "https://i.imgur.com/some-anirena-image.png"
 #   keywords        - List of search terms to filter by (optional)
 #   excludes        - List of glob-like patterns to exclude by title (optional)
 #   page.max        - Max number of pages to parse (optional, defaults to 1)
-#   discord.channel - Override target Discord channel snowflake (optional)
-
+#
 [monitor.tsukihime.my_group]
 groups = ["16", "Gecko"]
 uploaders = ["19", "TokekHutan"]
@@ -163,7 +221,10 @@ page.max = 1
 discord.embed.author.url = "https://i.imgur.com/some-tsukihime-image.png"
 
 [monitor.tsukihime.feedback]
-keywords = ["magnet", "DDL"] # list of keywords to monitor general feedback comments
+keywords = [
+  "magnet",
+  "DDL",
+] # list of keywords to monitor general feedback comments
 page.max = 1
 discord.embed.author.url = "https://i.imgur.com/some-feedback-image.png"
 
@@ -179,7 +240,7 @@ discord.embed.author.url = "https://i.imgur.com/some-feedback-image.png"
 #                     Or pass any custom bare domain: e.g., "fixvx.com" (defaults to x.com if empty)
 #   custom_format   - Go template string content override (optional). Defaults to posting the tweet URL (rewritten via `embed_service` if configured, else the original twitter.com URL).
 #                     Supported keys: {{.Account}}, {{.DisplayName}}, {{.TweetID}}, {{.Link}}, {{.OriginalLink}}, {{.Title}}, {{.PublishedAt}}
-
+#
 [monitor.twitter.mofusand_anime]
 discord.channel = "1234567890123456789"
 embed_service = "fixupx"

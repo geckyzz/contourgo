@@ -121,18 +121,35 @@ func (m *Monitor) hasActiveMonitorsDue(service string, force bool) bool {
 func (m *Monitor) Start() {
 	log.Println("Performing initial check on startup...")
 	m.CheckAll(true)
+	// Initial donation check
+	if count, err := m.bot.CheckAndClearExpiredDonators(); err == nil && count > 0 {
+		log.Printf("[DONATOR] Startup check cleared %d expired donator(s).", count)
+	}
 
 	// Tick every 10 seconds to process due monitors
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 
+	// Perform donator check once every hour (or 360 ticks)
+	var ticks int
+
 	for {
 		select {
 		case <-ticker.C:
 			m.CheckAll(false)
+			ticks++
+			if ticks >= 360 { // Roughly every 1 hour
+				ticks = 0
+				if count, err := m.bot.CheckAndClearExpiredDonators(); err == nil && count > 0 {
+					log.Printf("[DONATOR] Periodic check cleared %d expired donator(s).", count)
+				}
+			}
 		case <-m.forceCheckChan:
 			log.Println("Manual check triggered.")
 			m.CheckAll(true)
+			if count, err := m.bot.CheckAndClearExpiredDonators(); err == nil && count > 0 {
+				log.Printf("[DONATOR] Manual check cleared %d expired donator(s).", count)
+			}
 		}
 	}
 }
