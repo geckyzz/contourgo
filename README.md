@@ -129,6 +129,7 @@ You can define multiple monitors per service.
 | `sort`                                | Sorting method (see below)                                                | No       | _(Varies)_    | Nyaa/Sukebei, nekoBT, AniRena |
 | `order`                               | `asc` or `desc`                                                           | No       | `desc`        | Nyaa/Sukebei, AniRena         |
 | `page.max`                            | Max pages to scan per check                                               | No       | `5`           | All                           |
+| `monitor.by`                          | Poll interval override for this monitor (e.g. `PT15M` or `15m`)           | No       | _(Inherit)_   | All                           |
 | **Discord Customization & Overrides** |                                                                           |          |               |                               |
 | `discord.mentions.disable`            | Toggle to disable all pings for this monitor                              | No       | `false`       | All                           |
 | `discord.channel`                     | Discord channel override for announcements                                | No       | _(Inherit)_   | All                           |
