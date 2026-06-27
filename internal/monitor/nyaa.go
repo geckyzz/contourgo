@@ -49,14 +49,8 @@ func (m *Monitor) checkNyaaSukebeiService(service string, force bool) {
 
 		monitorPrefix := fmt.Sprintf("%s[%s]", prefix, key)
 
-		sort := monitorCfg.Sort
-		if sort == "" {
-			sort = "comments" // Default sort for Nyaa in ContourGo context if not specified
-		}
-		order := monitorCfg.Order
-		if order == "" {
-			order = "desc"
-		}
+		sort := cfg.ResolveNyaaSort(monitorCfg)
+		order := cfg.ResolveNyaaOrder(monitorCfg)
 
 		type target struct {
 			user string
@@ -214,7 +208,8 @@ func (m *Monitor) checkNyaaSukebeiService(service string, force bool) {
 					}
 				}
 
-				if monitorCfg.Page.Max > 0 && page >= monitorCfg.Page.Max {
+				maxPages := cfg.ResolveNyaaPageMax(monitorCfg)
+				if maxPages > 0 && page >= maxPages {
 					break
 				}
 				if page >= totalPages {

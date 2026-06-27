@@ -40,10 +40,7 @@ func (m *Monitor) checkNekoBT(force bool) {
 		prefix := fmt.Sprintf("[NEKOBT][%s]", key)
 		log.Printf("%s Processing monitor", prefix)
 
-		sort := monitorCfg.Sort
-		if sort == "" {
-			sort = "date"
-		}
+		sort := cfg.ResolveNekobtSort(monitorCfg)
 
 		params := url.Values{}
 		params.Set("sort_by", sort)
@@ -95,7 +92,8 @@ func (m *Monitor) checkNekoBTSearch(
 	sort string,
 	prefix string,
 ) {
-	maxPages := monitorCfg.Page.Max
+	cfg := m.Config()
+	maxPages := cfg.ResolveNekobtPageMax(monitorCfg)
 	if maxPages <= 0 {
 		maxPages = 1
 	}

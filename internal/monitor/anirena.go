@@ -45,14 +45,8 @@ func (m *Monitor) checkAnirena(force bool) {
 		prefix := fmt.Sprintf("[ANIRENA][%s]", key)
 		log.Printf("%s Processing monitor", prefix)
 
-		sort := monitorCfg.Sort
-		if sort == "" {
-			sort = "date"
-		}
-		order := monitorCfg.Order
-		if order == "" {
-			order = "desc"
-		}
+		sort := cfg.ResolveAnirenaSort(monitorCfg)
+		order := cfg.ResolveAnirenaOrder(monitorCfg)
 
 		type target struct {
 			user  string
@@ -190,7 +184,8 @@ func (m *Monitor) checkAnirena(force bool) {
 					}
 				}
 
-				if monitorCfg.Page.Max > 0 && page >= monitorCfg.Page.Max {
+				maxPages := cfg.ResolveAnirenaPageMax(monitorCfg)
+				if maxPages > 0 && page >= maxPages {
 					break
 				}
 				if page >= totalPages {

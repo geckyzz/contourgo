@@ -89,60 +89,90 @@ For initial database seeding without spamming Discord:
 
 ## ⚙️ Configuration Guide
 
+> [!TIP]
+> **TOML Tip: Grouping Nested Settings**
+>
+> In TOML, instead of repeating prefixes using **dot notation** like this:
+>
+> ```toml
+> [config]
+> nyaa.sort = "comments"
+> nyaa.order = "desc"
+> ```
+>
+> You can **group** them cleanly under a nested sub-header:
+>
+> ```toml
+> [config.nyaa]
+> sort = "comments"
+> order = "desc"
+> ```
+>
+> Both formats work exactly the same way. Using grouped sub-headers makes it much easier to read and configure many options for a specific service!
+
 ### Global Config
 
-| Key                                  | Description                                             | Required | Default              |
-| :----------------------------------- | :------------------------------------------------------ | :------- | :------------------- |
-| **Discord Credentials & Setup**      |                                                         |          |                      |
-| `discord.token`                      | Your Discord Bot Token                                  | Yes      | —                    |
-| `discord.server`                     | Target server snowflake for instant command sync        | No       | —                    |
-| `discord.announce.channel`           | Discord channel snowflake for notifications             | Yes      | —                    |
-| **Mentions Mapping**                 |                                                         |          |                      |
-| `discord.mentions`                   | Map `@name` to `<@snowflake>` in message content        | No       | —                    |
-| **Embed Layout & Styling**           |                                                         |          |                      |
-| `discord.embed.author.url`           | Global default static icon for the embed author         | No       | —                    |
-| `discord.fields.comment_id`          | Global default to toggle rendering comment ID           | No       | `false`              |
-| `discord.display.user_content_image` | Global default to toggle extracting user content images | No       | `false`              |
-| **Scraper Scheduling**               |                                                         |          |                      |
-| `config.monitor.by`                  | Check interval (e.g., `PT10M` or `10m`)                 | No       | `PT30M`              |
-| `config.time.uniform`                | Align check schedules to interval boundaries            | No       | `false`              |
-| **Service Integration APIs**         |                                                         |          |                      |
-| `config.nyaa.proxy.url`              | URL to your Nyaa/Sukebei API Proxy                      | Yes      | —                    |
-| `config.nekobt.api.key`              | Your nekoBT SSID API key                                | No       | —                    |
-| `config.anirena.api.key`             | Your AniRena API key                                    | No       | —                    |
-| `config.twitter.nitter_url`          | Default base URL of Nitter instance to use              | No       | `https://nitter.net` |
-| `config.twitter.embed_service`       | Default global embed service domain/short-name to use   | No       | `x.com`              |
-| `config.twitter.exclude_reposts`     | Default global setting to ignore retweet/repost items   | No       | `false`              |
+| Key                                  | Type       | Description                                             | Required | Default              |
+| :----------------------------------- | :--------- | :------------------------------------------------------ | :------- | :------------------- |
+| **Discord Credentials & Setup**      |            |                                                         |          |                      |
+| `discord.token`                      | String     | Your Discord Bot Token                                  | Yes      | —                    |
+| `discord.server`                     | String/Int | Target server snowflake for instant command sync        | No       | —                    |
+| `discord.announce.channel`           | String/Int | Discord channel snowflake for notifications             | Yes      | —                    |
+| `discord.mentions_disable`           | Boolean    | Toggle to disable all mentions globally                 | No       | `false`              |
+| **Mentions Mapping**                 |            |                                                         |          |                      |
+| `discord.mentions`                   | Table/Map  | Map `@name` to `<@snowflake>` in message content        | No       | —                    |
+| **Embed Layout & Styling**           |            |                                                         |          |                      |
+| `discord.embed.author.url`           | String     | Global default static icon for the embed author         | No       | —                    |
+| `discord.fields.comment_id`          | Boolean    | Global default to toggle rendering comment ID           | No       | `false`              |
+| `discord.display.user_content_image` | Boolean    | Global default to toggle extracting user content images | No       | `false`              |
+| **Scraper Scheduling**               |            |                                                         |          |                      |
+| `config.monitor.by`                  | String     | Check interval (e.g., `PT10M` or `10m`)                 | No       | `PT30M`              |
+| `config.time.uniform`                | Boolean    | Align check schedules to interval boundaries            | No       | `false`              |
+| **Service Integration APIs**         |            |                                                         |          |                      |
+| `config.nyaa.proxy.url`              | String     | URL to your Nyaa/Sukebei API Proxy                      | Yes      | —                    |
+| `config.nyaa.page.max`               | Integer    | Nyaa platform default page limit                        | No       | `0`                  |
+| `config.nyaa.sort`                   | String     | Nyaa platform default sort method                       | No       | `"comments"`         |
+| `config.nyaa.order`                  | String     | Nyaa platform default sort order                        | No       | `"desc"`             |
+| `config.nekobt.api.key`              | String     | Your nekoBT SSID API key                                | No       | —                    |
+| `config.nekobt.page.max`             | Integer    | nekoBT platform default page limit                      | No       | `1`                  |
+| `config.nekobt.sort`                 | String     | nekoBT platform default sort method                     | No       | `"date"`             |
+| `config.anirena.api.key`             | String     | Your AniRena API key                                    | No       | —                    |
+| `config.anirena.page.max`            | Integer    | AniRena platform default page limit                     | No       | `0`                  |
+| `config.anirena.sort`                | String     | AniRena platform default sort method                    | No       | `"date"`             |
+| `config.anirena.order`               | String     | AniRena platform default sort order                     | No       | `"desc"`             |
+| `config.twitter.nitter_url`          | String     | Default base URL of Nitter instance to use              | No       | `https://nitter.net` |
+| `config.twitter.embed_service`       | String     | Default global embed service domain/short-name to use   | No       | `x.com`              |
+| `config.twitter.exclude_reposts`     | Boolean    | Default global setting to ignore retweet/repost items   | No       | `false`              |
 
 ### Monitor Blocks (`[monitors.<service>.<key>]`)
 
 You can define multiple monitors per service.
 
-| Option                                | Description                                                               | Required | Default       | Supported Services            |
-| :------------------------------------ | :------------------------------------------------------------------------ | :------- | :------------ | :---------------------------- |
-| **Torrent Filters**                   |                                                                           |          |               |                               |
-| `keywords`                            | List of search strings (regex-compatible for Twitter)                     | No       | `[]`          | All                           |
-| `excludes`                            | List of glob patterns (regex-compatible for Twitter) to skip              | No       | `[]`          | All                           |
-| `uploaders`                           | List of uploader usernames or IDs                                         | No       | `[]`          | Nyaa/Sukebei, nekoBT, AniRena |
-| `groups`                              | List of Group IDs or Group Slugs                                          | No       | `[]`          | nekoBT, AniRena, TsukiHime    |
-| `media`                               | List of Media IDs                                                         | No       | `[]`          | nekoBT, TsukiHime             |
-| **Query & Scraper Behavior**          |                                                                           |          |               |                               |
-| `sort`                                | Sorting method (see below)                                                | No       | _(Varies)_    | Nyaa/Sukebei, nekoBT, AniRena |
-| `order`                               | `asc` or `desc`                                                           | No       | `desc`        | Nyaa/Sukebei, AniRena         |
-| `page.max`                            | Max pages to scan per check                                               | No       | `5`           | All                           |
-| `monitor.by`                          | Poll interval override for this monitor (e.g. `PT15M` or `15m`)           | No       | _(Inherit)_   | All                           |
-| **Discord Customization & Overrides** |                                                                           |          |               |                               |
-| `discord.mentions.disable`            | Toggle to disable all pings for this monitor                              | No       | `false`       | All                           |
-| `discord.channel`                     | Discord channel override for announcements                                | No       | _(Inherit)_   | All                           |
-| `discord.embed.author.url`            | Static icon for the embed author (overrides global default)               | No       | _(Inherit)_   | All                           |
-| `discord.fields.comment_id`           | Toggle rendering comment ID in embed (overrides global default)           | No       | _(Inherit)_   | All                           |
-| `discord.display.user_content_image`  | Toggle extracting images from comment text to embeds (overrides global)   | No       | _(Inherit)_   | All                           |
-| **Twitter/X Settings**                |                                                                           |          |               |                               |
-| `account`                             | Twitter username (without @); defaults to monitor key                     | No       | _(Keyname)_   | twitter                       |
-| `exclude_reposts`                     | Ignore retweet/repost items (starts with "RT by @")                       | No       | `false`       | twitter                       |
-| `nitter_url`                          | Override global Nitter base URL for this monitor                          | No       | _(Inherit)_   | twitter                       |
-| `embed_service`                       | Rewrite tweet links for Discord preview (see embed services table below). | No       | `x.com`       | twitter                       |
-| `custom_format`                       | Go template string for content override (see placeholders table below).   | No       | _(Tweet URL)_ | twitter                       |
+| Option                                | Type          | Description                                                               | Required | Default       | Supported Services            |
+| :------------------------------------ | :------------ | :------------------------------------------------------------------------ | :------- | :------------ | :---------------------------- |
+| **Torrent Filters**                   |               |                                                                           |          |               |                               |
+| `keywords`                            | List (String) | List of search strings (regex-compatible for Twitter)                     | No       | `[]`          | All                           |
+| `excludes`                            | List (String) | List of glob patterns (regex-compatible for Twitter) to skip              | No       | `[]`          | All                           |
+| `uploaders`                           | List (String) | List of uploader usernames or IDs                                         | No       | `[]`          | Nyaa/Sukebei, nekoBT, AniRena |
+| `groups`                              | List (String) | List of Group IDs or Group Slugs                                          | No       | `[]`          | nekoBT, AniRena, TsukiHime    |
+| `media`                               | List (String) | List of Media IDs                                                         | No       | `[]`          | nekoBT, TsukiHime             |
+| **Query & Scraper Behavior**          |               |                                                                           |          |               |                               |
+| `sort`                                | String        | Sorting method (see below)                                                | No       | _(Varies)_    | Nyaa/Sukebei, nekoBT, AniRena |
+| `order`                               | String        | `asc` or `desc`                                                           | No       | `desc`        | Nyaa/Sukebei, AniRena         |
+| `page.max`                            | Integer       | Max pages to scan per check                                               | No       | `5`           | All                           |
+| `monitor.by`                          | String        | Poll interval override for this monitor (e.g. `PT15M` or `15m`)           | No       | _(Inherit)_   | All                           |
+| **Discord Customization & Overrides** |               |                                                                           |          |               |                               |
+| `discord.mentions.disable`            | Boolean       | Toggle to disable all pings for this monitor                              | No       | `false`       | All                           |
+| `discord.channel`                     | String/Int    | Discord channel override for announcements                                | No       | _(Inherit)_   | All                           |
+| `discord.embed.author.url`            | String        | Static icon for the embed author (overrides global default)               | No       | _(Inherit)_   | All                           |
+| `discord.fields.comment_id`           | Boolean       | Toggle rendering comment ID in embed (overrides global default)           | No       | _(Inherit)_   | All                           |
+| `discord.display.user_content_image`  | Boolean       | Toggle extracting images from comment text to embeds (overrides global)   | No       | _(Inherit)_   | All                           |
+| **Twitter/X Settings**                |               |                                                                           |          |               |                               |
+| `account`                             | String        | Twitter username (without @); defaults to monitor key                     | No       | _(Keyname)_   | twitter                       |
+| `exclude_reposts`                     | Boolean       | Ignore retweet/repost items (starts with "RT by @")                       | No       | `false`       | twitter                       |
+| `nitter_url`                          | String        | Override global Nitter base URL for this monitor                          | No       | _(Inherit)_   | twitter                       |
+| `embed_service`                       | String        | Rewrite tweet links for Discord preview (see embed services table below). | No       | `x.com`       | twitter                       |
+| `custom_format`                       | String        | Go template string for content override (see placeholders table below).   | No       | _(Tweet URL)_ | twitter                       |
 
 **Supported Services**: `nyaa`, `sukebei`, `animetosho_old`, `animetosho_new`, `nekobt`, `anirena`,
 `tsukihime`, `twitter`.

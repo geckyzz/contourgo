@@ -56,7 +56,7 @@ func (m *Monitor) enqueueAnnouncement(
 			cfg.ResolveAuthorURL(monitorCfg),
 			cfg.ResolveCommentID(monitorCfg),
 			cfg.ResolveUserContentImage(monitorCfg),
-			monitorCfg.Discord.Mentions.Disable,
+			cfg.ResolveMentionsDisable(monitorCfg),
 		)
 		if err != nil {
 			log.Printf("%s Error queuing announcement: %v", prefix, err)

@@ -129,7 +129,7 @@ func (b *DiscordBot) AnnounceTwitterPost(
 	}
 
 	// Prepend any matched @mention pings.
-	mentions := b.GetMentionsForText(data.Title, monitorCfg.Discord.Mentions.Disable)
+	mentions := b.GetMentionsForText(data.Title, b.Config.ResolveMentionsDisable(monitorCfg))
 	if mentions != "" {
 		content = mentions + "\n" + content
 	}

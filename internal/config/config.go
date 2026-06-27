@@ -24,14 +24,15 @@ type Config struct {
 }
 
 type DiscordConfig struct {
-	Token    string               `toml:"token"`
-	Server   StringOrInt          `toml:"server"`
-	Mentions map[string]any       `toml:"mentions"`
-	Announce AnnounceConfig       `toml:"announce"`
-	Members  MembersConfig        `toml:"members"`
-	Embed    MonitorEmbedConfig   `toml:"embed"`
-	Fields   MonitorFieldsConfig  `toml:"fields"`
-	Display  MonitorDisplayConfig `toml:"display"`
+	Token           string               `toml:"token"`
+	Server          StringOrInt          `toml:"server"`
+	Mentions        map[string]any       `toml:"mentions"`
+	Announce        AnnounceConfig       `toml:"announce"`
+	Members         MembersConfig        `toml:"members"`
+	Embed           MonitorEmbedConfig   `toml:"embed"`
+	Fields          MonitorFieldsConfig  `toml:"fields"`
+	Display         MonitorDisplayConfig `toml:"display"`
+	MentionsDisable *bool                `toml:"mentions_disable"`
 }
 
 type AnnounceConfig struct {
@@ -72,6 +73,9 @@ type MonitorTimeConfig struct {
 
 type NyaaConfig struct {
 	Proxy ProxyConfig `toml:"proxy"`
+	Sort  string      `toml:"sort"`
+	Order string      `toml:"order"`
+	Page  PageConfig  `toml:"page"`
 }
 
 type ProxyConfig struct {
@@ -88,7 +92,10 @@ type AnimetoshoPageConfig struct {
 }
 
 type NekobtConfig struct {
-	API NekobtAPIConfig `toml:"api"`
+	API   NekobtAPIConfig `toml:"api"`
+	Sort  string          `toml:"sort"`
+	Order string          `toml:"order"`
+	Page  PageConfig      `toml:"page"`
 }
 
 type NekobtAPIConfig struct {
@@ -96,7 +103,10 @@ type NekobtAPIConfig struct {
 }
 
 type AnirenaConfig struct {
-	API AnirenaAPIConfig `toml:"api"`
+	API   AnirenaAPIConfig `toml:"api"`
+	Sort  string           `toml:"sort"`
+	Order string           `toml:"order"`
+	Page  PageConfig       `toml:"page"`
 }
 
 type AnirenaAPIConfig struct {
@@ -494,4 +504,94 @@ func (c *Config) ResolveExcludeReposts(monitor MonitorConfig) bool {
 		return *monitor.ExcludeReposts
 	}
 	return c.Config.Twitter.ExcludeReposts
+}
+
+// ResolveMentionsDisable returns true if mentions are disabled globally or on the monitor level.
+func (c *Config) ResolveMentionsDisable(monitor MonitorConfig) bool {
+	if monitor.Discord.Mentions.Disable {
+		return true
+	}
+	if c.Discord.MentionsDisable != nil {
+		return *c.Discord.MentionsDisable
+	}
+	return false
+}
+
+// ResolveNyaaSort returns the sort method for a Nyaa/Sukebei monitor, falling back to config-level, then "comments".
+func (c *Config) ResolveNyaaSort(monitor MonitorConfig) string {
+	if monitor.Sort != "" {
+		return monitor.Sort
+	}
+	if c.Config.Nyaa.Sort != "" {
+		return c.Config.Nyaa.Sort
+	}
+	return "comments"
+}
+
+// ResolveNyaaOrder returns the order for a Nyaa/Sukebei monitor, falling back to config-level, then "desc".
+func (c *Config) ResolveNyaaOrder(monitor MonitorConfig) string {
+	if monitor.Order != "" {
+		return monitor.Order
+	}
+	if c.Config.Nyaa.Order != "" {
+		return c.Config.Nyaa.Order
+	}
+	return "desc"
+}
+
+// ResolveNyaaPageMax returns the page limit for a Nyaa/Sukebei monitor, falling back to config-level, then 0.
+func (c *Config) ResolveNyaaPageMax(monitor MonitorConfig) int {
+	if monitor.Page.Max > 0 {
+		return monitor.Page.Max
+	}
+	return c.Config.Nyaa.Page.Max
+}
+
+// ResolveNekobtSort returns the sort method for a Nekobt monitor, falling back to config-level, then "date".
+func (c *Config) ResolveNekobtSort(monitor MonitorConfig) string {
+	if monitor.Sort != "" {
+		return monitor.Sort
+	}
+	if c.Config.Nekobt.Sort != "" {
+		return c.Config.Nekobt.Sort
+	}
+	return "date"
+}
+
+// ResolveNekobtPageMax returns the page limit for a Nekobt monitor, falling back to config-level, then 0.
+func (c *Config) ResolveNekobtPageMax(monitor MonitorConfig) int {
+	if monitor.Page.Max > 0 {
+		return monitor.Page.Max
+	}
+	return c.Config.Nekobt.Page.Max
+}
+
+// ResolveAnirenaSort returns the sort method for an Anirena monitor, falling back to config-level, then "date".
+func (c *Config) ResolveAnirenaSort(monitor MonitorConfig) string {
+	if monitor.Sort != "" {
+		return monitor.Sort
+	}
+	if c.Config.Anirena.Sort != "" {
+		return c.Config.Anirena.Sort
+	}
+	return "date"
+}
+
+// ResolveAnirenaOrder returns the order for an Anirena monitor, falling back to config-level, then "desc".
+func (c *Config) ResolveAnirenaOrder(monitor MonitorConfig) string {
+	if monitor.Order != "" {
+		return monitor.Order
+	}
+	if c.Config.Anirena.Order != "" {
+		return c.Config.Anirena.Order
+	}
+	return "desc"
+}
+
+// ResolveAnirenaPageMax returns the page limit for an Anirena monitor, falling back to config-level, then 0.
+func (c *Config) ResolveAnirenaPageMax(monitor MonitorConfig) int {
+	if monitor.Page.Max > 0 {
+		return monitor.Page.Max
+	}
+	return c.Config.Anirena.Page.Max
 }

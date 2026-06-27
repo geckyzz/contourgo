@@ -1,37 +1,85 @@
 [discord]
+# The Discord Bot authentication token used to log in
 token = "MTM....."
-server = "1326230604295180423" # server snowflake it host and to interacts
-mentions = { "geckyzz" = 123456789012345678 } # Map @name in comments to <@snowflake> in announcement message key (supports string or integer)
-announce.channel = "1234567890" # channel snowflake to announce at
-members.admins.allow = true # give all admins (other than the bot owner) access to the bot
-members.moderators.allow = false # give all members with manage message perm to access the bot
-members.others.allow = [] # list of user snowflakes to have access
+
+# The Discord server snowflake ID (guild ID) the bot is hosted on
+server = "1326230604295180423"
+
+# Map plain-text @name in feed comments to <@snowflake> Discord pings (supports string/int values)
+mentions = { "geckyzz" = 123456789012345678 }
+
+# The default target channel snowflake ID for bot announcement messages
+announce.channel = "1234567890"
+
+# Master switch to disable/silence all mentions and user pings globally
+mentions_disable = false
+
+# Grant bot command access to all server administrators (other than the bot owner)
+members.admins.allow = true
+
+# Grant bot command access to all server members who have 'Manage Messages' permission
+members.moderators.allow = false
+
+# Whitelist of specific user snowflake IDs allowed to interact with the bot
+members.others.allow = []
 
 # Global Discord Embed defaults (overridable per monitor)
-# embed.author.url = "https://i.imgur.com/some-global-author-image.png"
-# fields.comment_id = false
-# display.user_content_image = false
+# embed.author.url = "https://i.imgur.com/some-global-author-image.png" # Global default author icon URL
+# fields.comment_id = false                                              # Toggle display of comment ID field
+# display.user_content_image = false                                     # Toggle rendering of comment attachments/images
 
 [config]
-monitor.by = "PT30M" # how long before next check to be attempted in ISO 8601 (or "30m")
-time.uniform = false # align checks to the closest tens of minutes (e.g. 00:35 -> next at 00:40)
+# Default check interval/cadence for monitors (ISO 8601 duration e.g. "PT30M" or Go time string "30m")
+monitor.by = "PT30M"
+
+# Align polling checks to the closest tens of minutes (e.g. 00:35 is rounded to 00:40) to cluster checks
+time.uniform = false
+
+# Nyaa / Sukebei platform defaults
 nyaa.proxy.url = "" # Your nyaa-api-worker base url
+nyaa.page.max = 0
+nyaa.sort = "comments"
+nyaa.order = "desc"
+
+# AnimeTosho platform defaults
 animetosho.old.page.max = 5
 animetosho.new.page.max = 5
+
+# NekoBT platform defaults
 nekobt.api.key = ""
+nekobt.page.max = 1
+nekobt.sort = "date"
+
+# AniRena platform defaults
 anirena.api.key = ""
+anirena.page.max = 0
+anirena.sort = "date"
+anirena.order = "desc"
+
+# Twitter / Nitter platform defaults
 twitter.nitter_url = ""
 twitter.embed_service = ""
 twitter.exclude_reposts = false
 
+# ─── Nyaa / Sukebei Tracker ────────────────────────────────────────────────────
+# Nyaa/Sukebei monitors live under [monitor.nyaa.<key>] and [monitor.sukebei.<key>] and support:
+#   keywords        - List of query keywords to search (optional)
+#   uploaders       - List of uploaders/users to filter by (optional)
+#   excludes        - List of glob-like patterns to exclude by title (optional)
+#   sort            - Sort method: comments, size, id, seeders, leechers, downloads (optional, defaults to config level or "comments")
+#   order           - Sort order: desc, asc (optional, defaults to config level or "desc")
+#   page.max        - Max number of search pages to parse (optional, defaults to config level or 0 for unlimited)
+#   discord.channel - Override target Discord channel snowflake (optional)
+#   discord.mentions.disable - Disable mentions for this monitor (optional)
+
 [monitor.nyaa.normies]
-keywords = ["fansubs", "raws"] # list of keywords to search on nyaa
+keywords = ["fansubs", "raws"]
 uploaders = ["username1", "username2"]
-sort = "comments" # comments, size, id, seeders, leechers, downloads
-order = "desc"    # desc, asc
+sort = "comments"
+order = "desc"
 page.max = 0
 discord.embed.author.url = "https://i.imgur.com/some-nyaa-image.png"
-discord.mentions.disable = true # Set to true to disable all pings for this monitor
+discord.mentions.disable = true
 discord.fields.comment_id = false
 discord.display.user_content_image = false
 
@@ -41,6 +89,13 @@ sort = "id"
 order = "desc"
 page.max = 0
 discord.embed.author.url = "https://i.imgur.com/some-sukebei-image.png"
+
+# ─── AnimeTosho (New & Old) ───────────────────────────────────────────────────
+# AnimeTosho monitors live under [monitor.animetosho_new.<key>] and [monitor.animetosho_old.<key>] and support:
+#   keywords        - List of query keywords to match (optional)
+#   excludes        - List of glob-like patterns to exclude by title (optional)
+#   page.max        - Max number of pages to parse (optional, defaults to config level)
+#   discord.channel - Override target Discord channel snowflake (optional)
 
 [monitor.animetosho_new.all]
 keywords = ["Gecko"]
@@ -52,26 +107,57 @@ keywords = ["Gecko", "geckyzz", "CicakRumah", "TokekHutan"]
 page.max = 5
 discord.embed.author.url = "https://i.imgur.com/some-at-image.png"
 
+# ─── NekoBT ───────────────────────────────────────────────────────────────────
+# NekoBT monitors live under [monitor.nekobt.<key>] and support:
+#   groups          - List of target group IDs to filter by (optional)
+#   uploaders       - List of target uploader IDs to filter by (optional)
+#   media           - List of target media IDs (e.g. s123, tmdb:456, tvdb:789) (optional)
+#   keywords        - List of query keywords to fallback search (optional)
+#   excludes        - List of glob-like patterns to exclude by title (optional)
+#   sort            - Sort method: best, latest, oldest, rss, seeders, downloads, comments, etc. (optional, defaults to config level or "date")
+#   page.max        - Max number of pages to parse (optional, defaults to config level or 1)
+#   discord.channel - Override target Discord channel snowflake (optional)
+
 [monitor.nekobt.my_group]
-groups = ["12345"] # Monitor specific group ID
-uploaders = ["67890"] # Monitor specific uploader ID
-media = ["s123", "tmdb:456", "tvdb:789"] # Monitor specific media ID, tmdb ID, or tvdb ID
-keywords = ["some search term"] # Optional keyword search fallback
-sort = "comments" # best, latest, oldest, rss, seeders, downloads, comments, etc.
+groups = ["12345"]
+uploaders = ["67890"]
+media = ["s123", "tmdb:456", "tvdb:789"]
+keywords = ["some search term"]
+sort = "comments"
 discord.embed.author.url = "https://i.imgur.com/some-nekobt-image.png"
 
+# ─── AniRena ──────────────────────────────────────────────────────────────────
+# AniRena monitors live under [monitor.anirena.<key>] and support:
+#   keywords        - List of query keywords to search (optional)
+#   uploaders       - AniRena username to filter by (optional)
+#   excludes        - List of glob-like patterns to exclude by title (optional)
+#   sort            - Sort method: comments, size, id, seeders, leechers, downloads (optional, defaults to config level or "date")
+#   order           - Sort order: desc, asc (optional, defaults to config level or "desc")
+#   page.max        - Max number of pages to parse (optional, defaults to config level or 0 for unlimited)
+#   discord.channel - Override target Discord channel snowflake (optional)
+
 [monitor.anirena.normies]
-keywords = ["fansubs", "raws"] # list of keywords to search on AniRena
-uploaders = ["username1"] # AniRena username
-sort = "comments" # comments, size, id, seeders, leechers, downloads
-order = "desc"    # desc, asc
+keywords = ["fansubs", "raws"]
+uploaders = ["username1"]
+sort = "comments"
+order = "desc"
 page.max = 0
 discord.embed.author.url = "https://i.imgur.com/some-anirena-image.png"
 
+# ─── Tsukihime ────────────────────────────────────────────────────────────────
+# Tsukihime monitors live under [monitor.tsukihime.<key>] and support:
+#   groups          - List of group IDs or group names (optional)
+#   uploaders       - List of commenter/uploader user IDs or usernames (optional)
+#   media           - List of series IDs (e.g. 79, mal:59970, anilist:ID, anidb:ID) (optional)
+#   keywords        - List of search terms to filter by (optional)
+#   excludes        - List of glob-like patterns to exclude by title (optional)
+#   page.max        - Max number of pages to parse (optional, defaults to 1)
+#   discord.channel - Override target Discord channel snowflake (optional)
+
 [monitor.tsukihime.my_group]
-groups = ["16", "Gecko"] # Monitor specific group ID or group name
-uploaders = ["19", "TokekHutan"] # Monitor specific commenter/uploader user ID or username
-media = ["79", "mal:59970"] # Monitor specific series by TsukiHime ID, mal:ID, anilist:ID, anidb:ID
+groups = ["16", "Gecko"]
+uploaders = ["19", "TokekHutan"]
+media = ["79", "mal:59970"]
 keywords = ["Snowball Earth"]
 page.max = 1
 discord.embed.author.url = "https://i.imgur.com/some-tsukihime-image.png"
