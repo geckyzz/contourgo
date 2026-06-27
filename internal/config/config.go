@@ -52,6 +52,7 @@ type MainConfig struct {
 	Animetosho AnimetoshoConfig  `toml:"animetosho"`
 	Nekobt     NekobtConfig      `toml:"nekobt"`
 	Anirena    AnirenaConfig     `toml:"anirena"`
+	Twitter    TwitterConfig     `toml:"twitter"`
 }
 
 type TimeConfig struct {
@@ -95,6 +96,13 @@ type AnirenaAPIConfig struct {
 	Key string `toml:"key"`
 }
 
+// TwitterConfig holds global settings for Twitter/Nitter monitoring.
+type TwitterConfig struct {
+	// NitterURL is the base URL of the Nitter instance to use (e.g. "https://nitter.net").
+	// Individual monitors may override this.
+	NitterURL string `toml:"nitter_url"`
+}
+
 type MonitorConfig struct {
 	Keywords  []string             `toml:"keywords"`
 	Excludes  []string             `toml:"excludes"`
@@ -106,6 +114,20 @@ type MonitorConfig struct {
 	Page      PageConfig           `toml:"page"`
 	Discord   MonitorDiscordConfig `toml:"discord"`
 	Monitor   MonitorTimeConfig    `toml:"monitor"`
+
+	// Twitter/Nitter RSS-specific fields (only used by [monitor.twitter.*]).
+	// Account is the Twitter/X username (without @). Defaults to the monitor key.
+	Account string `toml:"account"`
+	// NitterURL overrides config.twitter.nitter_url for this specific account.
+	NitterURL string `toml:"nitter_url"`
+	// EmbedService rewrites tweet links to a fix-embed front-end.
+	// Short names: "fixupx", "vxtwitter", "fxtwitter", "twittpr".
+	// Or pass any bare domain string (e.g. "fixvx.com").
+	EmbedService string `toml:"embed_service"`
+	// CustomFormat is a Go text/template string sent as plain content instead of an embed.
+	// Placeholders: {{.Account}}, {{.DisplayName}}, {{.TweetID}}, {{.Link}},
+	//               {{.OriginalLink}}, {{.Title}}, {{.PublishedAt}}
+	CustomFormat string `toml:"custom_format"`
 }
 
 type PageConfig struct {
@@ -113,6 +135,7 @@ type PageConfig struct {
 }
 
 type MonitorDiscordConfig struct {
+	Channel  string                `toml:"channel"` // Optional: override global announce channel
 	Mentions MonitorMentionsConfig `toml:"mentions"`
 	Embed    MonitorEmbedConfig    `toml:"embed"`
 	Fields   MonitorFieldsConfig   `toml:"fields"`
@@ -270,6 +293,17 @@ func LoadConfig(path string) (*Config, error) {
 
 	// Clean fields
 	cfg.Config.Nyaa.Proxy.URL = strings.TrimSuffix(cfg.Config.Nyaa.Proxy.URL, "/")
+	cfg.Config.Twitter.NitterURL = strings.TrimSuffix(cfg.Config.Twitter.NitterURL, "/")
+
+	// Trim trailing slashes from per-monitor NitterURL fields.
+	if twitterMonitors, ok := cfg.Monitors["twitter"]; ok {
+		for key, m := range twitterMonitors {
+			if m.NitterURL != "" {
+				m.NitterURL = strings.TrimSuffix(m.NitterURL, "/")
+				twitterMonitors[key] = m
+			}
+		}
+	}
 
 	return &cfg, nil
 }
@@ -383,6 +417,7 @@ func (cfg *Config) LogConfigSummary() {
 			}
 		}
 	}
+
 	log.Printf("Total Monitors Configured: %d", totalMonitors)
 	log.Println("-----------------------------")
 }
@@ -415,4 +450,17 @@ func (c *Config) ResolveUserContentImage(monitor MonitorConfig) bool {
 		return *c.Discord.Display.UserContentImage
 	}
 	return false
+}
+
+// ResolveNitterURL returns the effective Nitter base URL for a MonitorConfig entry.
+// Per-monitor nitter_url takes precedence over the global config.twitter.nitter_url.
+// Falls back to "https://nitter.net" if neither is set.
+func (c *Config) ResolveNitterURL(monitor MonitorConfig) string {
+	if monitor.NitterURL != "" {
+		return monitor.NitterURL
+	}
+	if c.Config.Twitter.NitterURL != "" {
+		return c.Config.Twitter.NitterURL
+	}
+	return "https://nitter.net"
 }

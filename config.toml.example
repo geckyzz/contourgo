@@ -20,6 +20,7 @@ animetosho.old.page.max = 5
 animetosho.new.page.max = 5
 nekobt.api.key = ""
 anirena.api.key = ""
+twitter.nitter_url = ""
 
 [monitor.nyaa.normies]
 keywords = ["fansubs", "raws"] # list of keywords to search on nyaa
@@ -77,3 +78,28 @@ discord.embed.author.url = "https://i.imgur.com/some-tsukihime-image.png"
 keywords = ["magnet", "DDL"] # list of keywords to monitor general feedback comments
 page.max = 1
 discord.embed.author.url = "https://i.imgur.com/some-feedback-image.png"
+
+# ─── Twitter / X via Nitter RSS ────────────────────────────────────────────────
+# Twitter monitors live under [monitor.twitter.<key>] and support:
+#   account         - Twitter username (optional, defaults to keyname)
+#   keywords        - List of regex patterns to match against tweet title (optional)
+#   excludes        - List of regex patterns to skip matching tweets (optional)
+#   nitter_url      - Nitter base URL override (optional)
+#   embed_service   - Embed domain rewrite for Discord preview.
+#                     Valid short names: "fixupx", "vxtwitter", "fxtwitter", "twittpr", "fixvx"
+#                     Or pass any custom bare domain: e.g., "fixvx.com" (defaults to x.com if empty)
+#   custom_format   - Go template string content override (optional). Defaults to posting the tweet URL (rewritten via `embed_service` if configured, else the original twitter.com URL).
+#                     Supported keys: {{.Account}}, {{.DisplayName}}, {{.TweetID}}, {{.Link}}, {{.OriginalLink}}, {{.Title}}, {{.PublishedAt}}
+
+[monitor.twitter.mofusand_anime]
+discord.channel = "1234567890123456789"
+embed_service = "fixupx"
+discord.mentions.disable = false
+monitor.by = "PT15M"
+
+[monitor.twitter.my_custom_account]
+account = "realusername"
+discord.channel = "9876543210987654321"
+embed_service = "vxtwitter"
+custom_format = "📢 New tweet by **@{{.Account}}**: {{.Link}}"
+monitor.by = "PT30M"

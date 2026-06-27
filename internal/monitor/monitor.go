@@ -184,6 +184,14 @@ func (m *Monitor) CheckAll(force bool) {
 		})
 	}
 
+	// 8. Twitter / Nitter RSS
+	if m.hasActiveMonitorsDue("twitter", force) {
+		anyChecked = true
+		wg.Go(func() {
+			m.checkTwitter(force)
+		})
+	}
+
 	wg.Wait()
 
 	if anyChecked {

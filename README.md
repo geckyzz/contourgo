@@ -9,11 +9,21 @@ torrent trackers. Designed to be a robust, always-online replacement for legacy 
 ## 🚀 Features
 
 - **Multi-Site Monitoring**: Support for **Nyaa/Sukebei**, **AnimeTosho**
-  (old/`.org` and new/clone/`.xyz`), **nekoBT**, **AniRena**, and **TsukiHime**.
+  (old/`.org` and new/clone/`.xyz`), **nekoBT**, **AniRena**, **TsukiHime**, and
+  **Twitter/X** (via Nitter RSS).
+- **Twitter/X Monitoring**: Poll any public Twitter account via a [Nitter](https://github.com/zedeus/nitter)
+  RSS feed. Supports per-account:
+  - **Embed services**: Rewrite tweet links to `fixupx.com`, `vxtwitter.com`, `fxtwitter.com`,
+    `twittpr.com`, or any custom domain for better Discord preview support.
+  - **Custom message format**: Use Go template placeholders (`{{.Account}}`, `{{.Link}}`, etc.)
+    to send a plain content message instead of an embed.
+  - **Target channel override**: Route announcements to a specific channel per account.
+  - **Per-account poll interval**: Independent `monitor.by` for each account.
+  - **Regex filtering**: Optional case-insensitive regular expressions matching for `keywords` and `excludes`.
 - **Parallel Architecture**: Utilizes Go routines to check all active services simultaneously, maximizing
   throughput and minimizing check cycle duration.
 - **Smart Filtering**:
-  - **Keywords**: Monitor specific search terms across all services.
+  - **Keywords**: Monitor specific search terms across all services (supports regex on Twitter).
   - **Uploaders**: (Nyaa/Sukebei, nekoBT, AniRena) Monitor all releases or comments from specific users.
   - **Groups**: (nekoBT, AniRena, TsukiHime) Monitor specific fansub groups.
   - **Media**: (nekoBT, TsukiHime) Monitor specific series or movies by ID.
@@ -81,55 +91,90 @@ For initial database seeding without spamming Discord:
 
 ### Global Config
 
-| Key                                  | Description                                             | Required | Default |
-| :----------------------------------- | :------------------------------------------------------ | :------- | :------ |
-| **Discord Credentials & Setup**      |                                                         |          |         |
-| `discord.token`                      | Your Discord Bot Token                                  | Yes      | —       |
-| `discord.server`                     | Target server snowflake for instant command sync        | No       | —       |
-| `discord.announce.channel`           | Discord channel snowflake for notifications             | Yes      | —       |
-| **Mentions Mapping**                 |                                                         |          |         |
-| `discord.mentions`                   | Map `@name` to `<@snowflake>` in message content        | No       | —       |
-| **Embed Layout & Styling**           |                                                         |          |         |
-| `discord.embed.author.url`           | Global default static icon for the embed author         | No       | —       |
-| `discord.fields.comment_id`          | Global default to toggle rendering comment ID           | No       | `false` |
-| `discord.display.user_content_image` | Global default to toggle extracting user content images | No       | `false` |
-| **Scraper Scheduling**               |                                                         |          |         |
-| `config.monitor.by`                  | Check interval (e.g., `PT10M` or `10m`)                 | No       | `PT30M` |
-| `config.time.uniform`                | Align check schedules to interval boundaries            | No       | `false` |
-| **Service Integration APIs**         |                                                         |          |         |
-| `config.nyaa.proxy.url`              | URL to your Nyaa/Sukebei API Proxy                      | Yes      | —       |
-| `config.nekobt.api.key`              | Your nekoBT SSID API key                                | No       | —       |
-| `config.anirena.api.key`             | Your AniRena API key                                    | No       | —       |
+| Key                                  | Description                                             | Required | Default              |
+| :----------------------------------- | :------------------------------------------------------ | :------- | :------------------- |
+| **Discord Credentials & Setup**      |                                                         |          |                      |
+| `discord.token`                      | Your Discord Bot Token                                  | Yes      | —                    |
+| `discord.server`                     | Target server snowflake for instant command sync        | No       | —                    |
+| `discord.announce.channel`           | Discord channel snowflake for notifications             | Yes      | —                    |
+| **Mentions Mapping**                 |                                                         |          |                      |
+| `discord.mentions`                   | Map `@name` to `<@snowflake>` in message content        | No       | —                    |
+| **Embed Layout & Styling**           |                                                         |          |                      |
+| `discord.embed.author.url`           | Global default static icon for the embed author         | No       | —                    |
+| `discord.fields.comment_id`          | Global default to toggle rendering comment ID           | No       | `false`              |
+| `discord.display.user_content_image` | Global default to toggle extracting user content images | No       | `false`              |
+| **Scraper Scheduling**               |                                                         |          |                      |
+| `config.monitor.by`                  | Check interval (e.g., `PT10M` or `10m`)                 | No       | `PT30M`              |
+| `config.time.uniform`                | Align check schedules to interval boundaries            | No       | `false`              |
+| **Service Integration APIs**         |                                                         |          |                      |
+| `config.nyaa.proxy.url`              | URL to your Nyaa/Sukebei API Proxy                      | Yes      | —                    |
+| `config.nekobt.api.key`              | Your nekoBT SSID API key                                | No       | —                    |
+| `config.anirena.api.key`             | Your AniRena API key                                    | No       | —                    |
+| `config.twitter.nitter_url`          | Default base URL of Nitter instance to use              | No       | `https://nitter.net` |
 
 ### Monitor Blocks (`[monitors.<service>.<key>]`)
 
 You can define multiple monitors per service.
 
-| Option                                | Description                                                             | Required | Default     | Supported Services            |
-| :------------------------------------ | :---------------------------------------------------------------------- | :------- | :---------- | :---------------------------- |
-| **Torrent Filters**                   |                                                                         |          |             |                               |
-| `keywords`                            | List of search strings                                                  | No       | `[]`        | All                           |
-| `excludes`                            | List of glob patterns to skip                                           | No       | `[]`        | All                           |
-| `uploaders`                           | List of uploader usernames or IDs                                       | No       | `[]`        | Nyaa/Sukebei, nekoBT, AniRena |
-| `groups`                              | List of Group IDs or Group Slugs                                        | No       | `[]`        | nekoBT, AniRena, TsukiHime    |
-| `media`                               | List of Media IDs                                                       | No       | `[]`        | nekoBT, TsukiHime             |
-| **Query & Scraper Behavior**          |                                                                         |          |             |                               |
-| `sort`                                | Sorting method (see below)                                              | No       | _(Varies)_  | Nyaa/Sukebei, nekoBT, AniRena |
-| `order`                               | `asc` or `desc`                                                         | No       | `desc`      | Nyaa/Sukebei, AniRena         |
-| `page.max`                            | Max pages to scan per check                                             | No       | `5`         | All                           |
-| **Discord Customization & Overrides** |                                                                         |          |             |                               |
-| `discord.mentions.disable`            | Toggle to disable all pings for this monitor                            | No       | `false`     | All                           |
-| `discord.embed.author.url`            | Static icon for the embed author (overrides global default)             | No       | _(Inherit)_ | All                           |
-| `discord.fields.comment_id`           | Toggle rendering comment ID in embed (overrides global default)         | No       | _(Inherit)_ | All                           |
-| `discord.display.user_content_image`  | Toggle extracting images from comment text to embeds (overrides global) | No       | _(Inherit)_ | All                           |
+| Option                                | Description                                                               | Required | Default       | Supported Services            |
+| :------------------------------------ | :------------------------------------------------------------------------ | :------- | :------------ | :---------------------------- |
+| **Torrent Filters**                   |                                                                           |          |               |                               |
+| `keywords`                            | List of search strings (regex-compatible for Twitter)                     | No       | `[]`          | All                           |
+| `excludes`                            | List of glob patterns (regex-compatible for Twitter) to skip              | No       | `[]`          | All                           |
+| `uploaders`                           | List of uploader usernames or IDs                                         | No       | `[]`          | Nyaa/Sukebei, nekoBT, AniRena |
+| `groups`                              | List of Group IDs or Group Slugs                                          | No       | `[]`          | nekoBT, AniRena, TsukiHime    |
+| `media`                               | List of Media IDs                                                         | No       | `[]`          | nekoBT, TsukiHime             |
+| **Query & Scraper Behavior**          |                                                                           |          |               |                               |
+| `sort`                                | Sorting method (see below)                                                | No       | _(Varies)_    | Nyaa/Sukebei, nekoBT, AniRena |
+| `order`                               | `asc` or `desc`                                                           | No       | `desc`        | Nyaa/Sukebei, AniRena         |
+| `page.max`                            | Max pages to scan per check                                               | No       | `5`           | All                           |
+| **Discord Customization & Overrides** |                                                                           |          |               |                               |
+| `discord.mentions.disable`            | Toggle to disable all pings for this monitor                              | No       | `false`       | All                           |
+| `discord.channel`                     | Discord channel override for announcements                                | No       | _(Inherit)_   | All                           |
+| `discord.embed.author.url`            | Static icon for the embed author (overrides global default)               | No       | _(Inherit)_   | All                           |
+| `discord.fields.comment_id`           | Toggle rendering comment ID in embed (overrides global default)           | No       | _(Inherit)_   | All                           |
+| `discord.display.user_content_image`  | Toggle extracting images from comment text to embeds (overrides global)   | No       | _(Inherit)_   | All                           |
+| **Twitter/X Settings**                |                                                                           |          |               |                               |
+| `account`                             | Twitter username (without @); defaults to monitor key                     | No       | _(Keyname)_   | twitter                       |
+| `nitter_url`                          | Override global Nitter base URL for this monitor                          | No       | _(Inherit)_   | twitter                       |
+| `embed_service`                       | Rewrite tweet links for Discord preview (see embed services table below). | No       | `x.com`       | twitter                       |
+| `custom_format`                       | Go template string for content override (see placeholders table below).   | No       | _(Tweet URL)_ | twitter                       |
 
 **Supported Services**: `nyaa`, `sukebei`, `animetosho_old`, `animetosho_new`, `nekobt`, `anirena`,
-`tsukihime`.
+`tsukihime`, `twitter`.
 
 #### Media ID Formats
 
 - **nekoBT**: `s123` (internal ID), `tmdb:123`, `tvdb:456`.
 - **TsukiHime**: `79` (internal ID), `mal:59970`, `anilist:196187`, `anidb:19479`.
+
+#### Twitter Custom Formatting Keys
+
+When configuring `custom_format`, you can use the following Go template placeholder keys:
+
+| Placeholder         | Description                                                                         | Example Output                                                 |
+| :------------------ | :---------------------------------------------------------------------------------- | :------------------------------------------------------------- |
+| `{{.Account}}`      | The Twitter/X username (without `@`)                                                | `mofusand_anime`                                               |
+| `{{.DisplayName}}`  | The display name from the Nitter RSS channel                                        | `アニメ『mofusand』公式`                                       |
+| `{{.TweetID}}`      | The parsed numeric tweet ID (falls back to RSS GUID)                                | `2069557366060716144`                                          |
+| `{{.Link}}`         | The rewritten tweet URL (uses the `embed_service` domain, else defaults to `x.com`) | `https://fixupx.com/mofusand_anime/status/2069557366060716144` |
+| `{{.OriginalLink}}` | The original `x.com` status link                                                    | `https://x.com/mofusand_anime/status/2069557366060716144`      |
+| `{{.Title}}`        | The RSS item title (containing the tweet text excerpt)                              | `🐾今日の #mofusand🐾 にゃー！！ #ちびにゃん`                  |
+| `{{.PublishedAt}}`  | The Unix timestamp of when the tweet was published (int64)                          | `1781214364`                                                   |
+
+#### Supported Twitter Embed Services
+
+When configuring `embed_service`, you can use standard short names, custom domains, or leave it empty for defaults:
+
+| Embed Service / Domain                | Discord Preview Behavior                  | Rewritten Link Example                                             |
+| :------------------------------------ | :---------------------------------------- | :----------------------------------------------------------------- |
+| `fixupx` (or `fixupx.com`)            | Optimized video and image previews.       | `https://fixupx.com/mofusand_anime/status/2069557366060716144`     |
+| `vxtwitter` (or `vxtwitter.com`)      | Enhances video playback embeds.           | `https://vxtwitter.com/mofusand_anime/status/2069557366060716144`  |
+| `fxtwitter` (or `fxtwitter.com`)      | Stable video & image previews.            | `https://fxtwitter.com/mofusand_anime/status/2069557366060716144`  |
+| `twittpr` (or `twittpr.com`)          | Rewrites to use `twittpr.com`.            | `https://twittpr.com/mofusand_anime/status/2069557366060716144`    |
+| `fixvx` (or `fixvx.com`)              | Rewrites to use `fixvx.com`.              | `https://fixvx.com/mofusand_anime/status/2069557366060716144`      |
+| Custom Domain (e.g. `yourdomain.com`) | Rewrites to the provided domain directly. | `https://yourdomain.com/mofusand_anime/status/2069557366060716144` |
+| `""` (Empty / Not Set)                | Fallback to original `x.com` format.      | `https://x.com/mofusand_anime/status/2069557366060716144`          |
 
 #### Sorting Options
 

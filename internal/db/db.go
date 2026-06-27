@@ -492,3 +492,64 @@ func (db *DB) GetStats() (int, int, error) {
 	}
 	return torrentsCount, commentsCount, nil
 }
+
+// Tweet represents a single tweet/post fetched from a Nitter RSS feed.
+type Tweet struct {
+	Account     string
+	TweetID     string
+	Title       string
+	Link        string
+	PublishedAt int64
+	SeenAt      time.Time
+}
+
+// IsTweetSeen returns true if a tweet with the given account+tweetID is already stored.
+func (db *DB) IsTweetSeen(account, tweetID string) bool {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	var exists int
+	err := db.Conn.QueryRow(
+		`SELECT 1 FROM twitter_tweets WHERE account = ? AND tweet_id = ?`,
+		account, tweetID,
+	).Scan(&exists)
+	return err == nil
+}
+
+// StoreTweet persists a seen tweet so it won't be re-announced.
+func (db *DB) StoreTweet(account, tweetID, title, link string, publishedAt int64) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	_, err := db.Conn.Exec(
+		`INSERT OR IGNORE INTO twitter_tweets (account, tweet_id, title, link, published_at)
+		 VALUES (?, ?, ?, ?, ?)`,
+		account, tweetID, title, link, publishedAt,
+	)
+	return err
+}
+
+// GetLatestTweets returns the most recent tweets stored in the DB.
+func (db *DB) GetLatestTweets(limit int) ([]Tweet, error) {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	rows, err := db.Conn.Query(
+		`SELECT account, tweet_id, title, link, published_at, seen_at
+		 FROM twitter_tweets
+		 ORDER BY seen_at DESC
+		 LIMIT ?`,
+		limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var tweets []Tweet
+	for rows.Next() {
+		var t Tweet
+		if err := rows.Scan(&t.Account, &t.TweetID, &t.Title, &t.Link, &t.PublishedAt, &t.SeenAt); err != nil {
+			return nil, err
+		}
+		tweets = append(tweets, t)
+	}
+	return tweets, nil
+}
