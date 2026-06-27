@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"regexp"
+	"strings"
 
 	"github.com/geckyzz/contourgo/internal/config"
 	"github.com/geckyzz/contourgo/internal/discord"
@@ -91,6 +92,11 @@ func (m *Monitor) checkTwitterAccount(
 	// Process items in chronological order (oldest first so Discord timeline is correct).
 	for i := len(items) - 1; i >= 0; i-- {
 		item := items[i]
+
+		// 0. Exclude reposts if configured
+		if cfg.ResolveExcludeReposts(monitorCfg) && strings.HasPrefix(item.Title, "RT by @") {
+			continue
+		}
 
 		// 1. Exclude filter (regex-compatible)
 		if len(excludeRegexes) > 0 {

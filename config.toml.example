@@ -22,6 +22,7 @@ nekobt.api.key = ""
 anirena.api.key = ""
 twitter.nitter_url = ""
 twitter.embed_service = ""
+twitter.exclude_reposts = false
 
 [monitor.nyaa.normies]
 keywords = ["fansubs", "raws"] # list of keywords to search on nyaa
@@ -85,6 +86,7 @@ discord.embed.author.url = "https://i.imgur.com/some-feedback-image.png"
 #   account         - Twitter username (optional, defaults to keyname)
 #   keywords        - List of regex patterns to match against tweet title (optional)
 #   excludes        - List of regex patterns to skip matching tweets (optional)
+#   exclude_reposts - Ignore retweet/repost items (starts with "RT by @") (optional, boolean)
 #   nitter_url      - Nitter base URL override (optional)
 #   embed_service   - Embed domain rewrite for Discord preview.
 #                     Valid short names: "fixupx", "vxtwitter", "fxtwitter", "twittpr", "fixvx"
@@ -95,6 +97,7 @@ discord.embed.author.url = "https://i.imgur.com/some-feedback-image.png"
 [monitor.twitter.mofusand_anime]
 discord.channel = "1234567890123456789"
 embed_service = "fixupx"
+exclude_reposts = true
 discord.mentions.disable = false
 monitor.by = "PT15M"
 

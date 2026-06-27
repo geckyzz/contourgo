@@ -110,6 +110,8 @@ type TwitterConfig struct {
 	NitterURL string `toml:"nitter_url"`
 	// EmbedService is the global default fix-embed domain/service to use.
 	EmbedService string `toml:"embed_service"`
+	// ExcludeReposts is the global default for ignoring retweet/repost items.
+	ExcludeReposts bool `toml:"exclude_reposts"`
 }
 
 type MonitorConfig struct {
@@ -137,6 +139,8 @@ type MonitorConfig struct {
 	// Placeholders: {{.Account}}, {{.DisplayName}}, {{.TweetID}}, {{.Link}},
 	//               {{.OriginalLink}}, {{.Title}}, {{.PublishedAt}}
 	CustomFormat string `toml:"custom_format"`
+	// ExcludeReposts ignores Nitter RSS items that are retweets/reposts (starting with "RT by @").
+	ExcludeReposts *bool `toml:"exclude_reposts"`
 }
 
 type PageConfig struct {
@@ -481,4 +485,13 @@ func (c *Config) ResolveEmbedService(monitor MonitorConfig) string {
 		return monitor.EmbedService
 	}
 	return c.Config.Twitter.EmbedService
+}
+
+// ResolveExcludeReposts returns the effective ExcludeReposts setting for a MonitorConfig entry.
+// Per-monitor exclude_reposts takes precedence over the global config.twitter.exclude_reposts.
+func (c *Config) ResolveExcludeReposts(monitor MonitorConfig) bool {
+	if monitor.ExcludeReposts != nil {
+		return *monitor.ExcludeReposts
+	}
+	return c.Config.Twitter.ExcludeReposts
 }

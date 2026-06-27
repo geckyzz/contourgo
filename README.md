@@ -112,6 +112,7 @@ For initial database seeding without spamming Discord:
 | `config.anirena.api.key`             | Your AniRena API key                                    | No       | —                    |
 | `config.twitter.nitter_url`          | Default base URL of Nitter instance to use              | No       | `https://nitter.net` |
 | `config.twitter.embed_service`       | Default global embed service domain/short-name to use   | No       | `x.com`              |
+| `config.twitter.exclude_reposts`     | Default global setting to ignore retweet/repost items   | No       | `false`              |
 
 ### Monitor Blocks (`[monitors.<service>.<key>]`)
 
@@ -138,6 +139,7 @@ You can define multiple monitors per service.
 | `discord.display.user_content_image`  | Toggle extracting images from comment text to embeds (overrides global)   | No       | _(Inherit)_   | All                           |
 | **Twitter/X Settings**                |                                                                           |          |               |                               |
 | `account`                             | Twitter username (without @); defaults to monitor key                     | No       | _(Keyname)_   | twitter                       |
+| `exclude_reposts`                     | Ignore retweet/repost items (starts with "RT by @")                       | No       | `false`       | twitter                       |
 | `nitter_url`                          | Override global Nitter base URL for this monitor                          | No       | _(Inherit)_   | twitter                       |
 | `embed_service`                       | Rewrite tweet links for Discord preview (see embed services table below). | No       | `x.com`       | twitter                       |
 | `custom_format`                       | Go template string for content override (see placeholders table below).   | No       | _(Tweet URL)_ | twitter                       |
