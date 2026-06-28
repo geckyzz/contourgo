@@ -37,6 +37,7 @@ type DiscordConfig struct {
 }
 
 type DonationConfig struct {
+	Currency       string             `toml:"currency"`         // e.g. USD, EUR, etc.
 	PerkMultiplier float64            `toml:"perk_multiplier"`  // e.g. 9.99 USD
 	MaxStacks      int                `toml:"max_stacks"`       // e.g. 12 months maximum stack limit
 	Tiers          map[string]float64 `toml:"tiers"`            // Tier RoleID -> Minimum Cumulative USD required

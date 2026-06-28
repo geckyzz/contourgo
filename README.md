@@ -140,7 +140,8 @@ For initial database seeding without spamming Discord:
 | `config.twitter.embed_service`       | String     | Default global embed service domain/short-name to use    | No       | `x.com`              |
 | `config.twitter.exclude_reposts`     | Boolean    | Default global setting to ignore retweet/repost items    | No       | `false`              |
 | **Donation Management**              |            |                                                          |          |                      |
-| `donation.perk_multiplier`           | Float      | USD cost per 1 month of role perks duration              | No       | `9.99`               |
+| `donation.currency`                  | String     | Currency code suffix (e.g. `USD`, `EUR`, `CAD`)          | No       | `"USD"`              |
+| `donation.perk_multiplier`           | Float      | Cost per 1 month of role perks duration                  | No       | `9.99`               |
 | `donation.max_stacks`                | Integer    | Max months perk duration stack limit                     | No       | `12`                 |
 | `donation.notify_warn_days`          | Integer    | Days before expiry to send warning notification          | No       | `3`                  |
 | `donation.silent.globally`           | Boolean    | Suppress all donator DMs globally                        | No       | `false`              |
@@ -161,20 +162,28 @@ For initial database seeding without spamming Discord:
 
 When customizing DM notification messages under `[donation.format.<action>]`, you can use the following Go template placeholder keys:
 
-| Placeholder            | Description                                                         | Example Output       |
-| :--------------------- | :------------------------------------------------------------------ | :------------------- |
-| `{{.Username}}`        | Discord display username of the donator user                        | `geckyzz`            |
-| `{{.UserID}}`          | Discord numeric snowflake ID of the donator user                    | `123456789012345678` |
-| `{{.Amount}}`          | Formatted currency string added (e.g. `amount` + `USD`)             | `$9.99 USD`          |
-| `{{.AmountValue}}`     | Raw float value of the current transaction amount                   | `9.99`               |
-| `{{.Cumulative}}`      | Cumulative formatted donation total (e.g. total cumulative + `USD`) | `$19.98 USD`         |
-| `{{.CumulativeValue}}` | Raw float value of cumulative donation total                        | `19.98`              |
-| `{{.Duration}}`        | Formatted text representation of added time                         | `30 days`            |
-| `{{.Expiry}}`          | Full human-readable target date string                              | `January 2, 2026`    |
-| `{{.ExpiryUnix}}`      | Raw Unix epoch integer timestamp of the expiry date                 | `1767344400`         |
-| `{{.TimeLeft}}`        | Time left remaining (Only supported for warning DMs)                | `2 days, 23 hours`   |
+| Placeholder            | Description                                                         | Example Output                    |
+| :--------------------- | :------------------------------------------------------------------ | :-------------------------------- |
+| `{{.Username}}`        | Discord display username of the donator user                        | `geckyzz`                         |
+| `{{.UserID}}`          | Discord numeric snowflake ID of the donator user                    | `123456789012345678`              |
+| `{{.Amount}}`          | Formatted currency string added (e.g. `amount` + `USD`)             | `9.99 USD`                        |
+| `{{.AmountValue}}`     | Raw float value of the current transaction amount                   | `9.99`                            |
+| `{{.Cumulative}}`      | Cumulative formatted donation total (e.g. total cumulative + `USD`) | `19.98 USD`                       |
+| `{{.CumulativeValue}}` | Raw float value of cumulative donation total                        | `19.98`                           |
+| `{{.Duration}}`        | Formatted text representation of added time                         | `30 days`                         |
+| `{{.Expiry}}`          | Full human-readable target date string                              | `January 2, 2026`                 |
+| `{{.ExpiryUnix}}`      | Raw Unix epoch integer timestamp of the expiry date                 | `1767344400`                      |
+| `{{.TimeLeft}}`        | Time left remaining (Only supported for warning DMs)                | `2 days, 23 hours`                |
+| `{{.ServerName}}`      | Name of the Discord server/guild                                    | `Contour Go Server`               |
+| `{{.Account}}`         | Payment account/gateway name (e.g. PayPal, Ko-Fi)                   | `paypal`                          |
+| `{{.Note}}`            | Custom transaction note or memo                                     | `Hosting Support`                 |
+| `{{.AddedDate}}`       | Formatted transaction creation date                                 | `January 1, 2026 at 12:00 AM MST` |
+| `{{.AddedUnix}}`       | Raw Unix epoch timestamp of transaction creation                    | `1767225600`                      |
+| `{{.RoleID}}`          | ID of the highest qualified server tier role assigned               | `132623942561261...`              |
 
 ### Monitor Blocks (`[monitors.<service>.<key>]`)
+
+The `<key>` acts as a unique identifier for the monitor instance (used in logs, console outputs, and Discord announcement labels). For the **`twitter`** service, it also defaults to the Twitter username if `account` is omitted.
 
 You can define multiple monitors per service.
 

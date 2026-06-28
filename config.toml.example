@@ -25,18 +25,23 @@ mentions_disable = false
 members.admins.allow = true
 members.moderators.allow = false
 members.others.allow = []
+# embed.author.url = "https://i.imgur.com/some-image.png"
+# fields.comment_id = false
+# display.user_content_image = false
 
 # ─── Donation Management ────────────────────────────────────────────────────────
 # Donation settings manage server roles, transaction logs, and notification DMs:
-#   perk_multiplier   - Amount in USD per 1 month of active perk duration (default: 9.99)
+#   currency          - Three-letter currency code suffix (default: "USD")
+#   perk_multiplier   - Amount per 1 month of active perk duration (default: 9.99)
 #   max_stacks        - Maximum cumulative months of duration that can be queued (default: 12)
 #   notify_warn_days  - Days remaining before expiration to send warning pings (0 to disable, default: 3)
 #   silent.globally   - Disable all automated donator DM notifications (default: false)
 #   silent.on_warning - Disable warnings sent prior to role expiration (default: false)
 #   silent.on_expiry  - Disable final role expiration DM notices (default: false)
-#   [donation.tiers]  - Multi-tier dynamic rewards mapping Role ID = Cumulative USD Threshold
+#   [donation.tiers]  - Multi-tier dynamic rewards mapping Role ID = Cumulative Threshold
 #
 [donation]
+currency = "USD"
 perk_multiplier = 9.99
 max_stacks = 12
 notify_warn_days = 3
@@ -53,18 +58,24 @@ silent.on_expiry = false
 #   Supported Placeholders:
 #     - {{.Username}}        - Discord display username of the donator user
 #     - {{.UserID}}          - Discord numeric snowflake ID of the donator user
-#     - {{.Amount}}          - Formatted currency string added (e.g. "$9.99 USD")
+#     - {{.Amount}}          - Formatted currency string added (e.g. "9.99 USD")
 #     - {{.AmountValue}}     - Raw float value of the current transaction amount
-#     - {{.Cumulative}}      - Cumulative formatted donation total (e.g. "$19.98 USD")
+#     - {{.Cumulative}}      - Cumulative formatted donation total (e.g. "19.98 USD")
 #     - {{.CumulativeValue}} - Raw float value of cumulative donation total
 #     - {{.Duration}}        - Formatted text representation of added time (e.g. "30 days")
 #     - {{.Expiry}}          - Full human-readable target date string (e.g. "January 2, 2026")
 #     - {{.ExpiryUnix}}      - Raw Unix epoch integer timestamp of the expiry date
 #     - {{.TimeLeft}}        - Time left remaining (Only for Warning DMs)
+#     - {{.ServerName}}      - Name of the Discord server/guild
+#     - {{.Account}}         - Payment account/gateway name (e.g. "paypal")
+#     - {{.Note}}            - Custom note linked to transaction
+#     - {{.AddedDate}}       - Formatted transaction creation date
+#     - {{.AddedUnix}}       - Raw Unix epoch timestamp of transaction creation
+#     - {{.RoleID}}          - ID of the highest qualified server tier role assigned
 #
 [donation.format.add]
-title = "💖 Donation Received & Perks Activated!"
-desc = "Thank you so much for your support {{.Username}}! Your donation of {{.Amount}} has been recorded, and your perks are now active until <t:{{.ExpiryUnix}}:f> (<t:{{.ExpiryUnix}}:R>)."
+title = "💖 Donation Received{{if .RoleID}} & Perks Activated{{end}}!"
+desc = "Thank you so much for your support {{.Username}}! Your donation of {{.Amount}} has been recorded{{if .RoleID}}, and your perks are now active until <t:{{.ExpiryUnix}}:f> (<t:{{.ExpiryUnix}}:R>){{end}}."
 
 [donation.format.renew]
 title = "🔁 Perks Renewed & Subscription Extended!"
@@ -190,6 +201,7 @@ discord.embed.author.url = "https://i.imgur.com/some-nekobt-image.png"
 # AniRena monitors live under [monitor.anirena.<key>] and support:
 #   keywords        - List of query keywords to search (optional)
 #   uploaders       - AniRena username to filter by (optional)
+#   groups          - List of target group names or IDs to filter by (optional)
 #   excludes        - List of glob-like patterns to exclude by title (optional)
 #   sort            - Sort method: comments, size, id, seeders, leechers, downloads (optional, defaults to config level or "date")
 #   order           - Sort order: desc, asc (optional, defaults to config level or "desc")
@@ -198,6 +210,7 @@ discord.embed.author.url = "https://i.imgur.com/some-nekobt-image.png"
 [monitor.anirena.normies]
 keywords = ["fansubs", "raws"]
 uploaders = ["username1"]
+groups = ["Groupname1"]
 sort = "comments"
 order = "desc"
 page.max = 0

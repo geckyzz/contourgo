@@ -230,6 +230,9 @@ func (b *DiscordBot) handleDonationAdd(
 			durationDesc,
 			newExpiry,
 			isRenewal,
+			account,
+			note,
+			now,
 		)
 	}
 
@@ -295,6 +298,9 @@ func (b *DiscordBot) sendDonatorNotificationEmbed(
 	duration string,
 	expiry int64,
 	isRenewal bool,
+	account string,
+	note string,
+	addedTime int64,
 ) {
 	channel, err := s.UserChannelCreate(user.ID)
 	if err != nil {
@@ -304,17 +310,14 @@ func (b *DiscordBot) sendDonatorNotificationEmbed(
 
 	expiryStr := time.Unix(expiry, 0).Format("January 2, 2006 at 3:04 PM MST")
 
-	tplData := map[string]any{
-		"Username":        user.Username,
-		"UserID":          user.ID,
-		"Amount":          fmt.Sprintf("$%.2f USD", amount),
-		"AmountValue":     amount,
-		"Cumulative":      fmt.Sprintf("$%.2f USD", totalUSD),
-		"CumulativeValue": totalUSD,
-		"Duration":        duration,
-		"Expiry":          expiryStr,
-		"ExpiryUnix":      expiry,
-	}
+	tplData := b.buildTplData(s, user.Username, user.ID, totalUSD, expiry)
+	tplData["Amount"] = fmt.Sprintf("%.2f %s", amount, b.getCurrency())
+	tplData["AmountValue"] = amount
+	tplData["Duration"] = duration
+	tplData["Account"] = account
+	tplData["Note"] = note
+	tplData["AddedDate"] = time.Unix(addedTime, 0).Format("January 2, 2006 at 3:04 PM MST")
+	tplData["AddedUnix"] = addedTime
 
 	var title, desc string
 	if isRenewal {
@@ -332,12 +335,12 @@ func (b *DiscordBot) sendDonatorNotificationEmbed(
 		title = b.renderDonationTemplate(
 			b.Config.Donation.Format.Add.Title,
 			tplData,
-			"💖 Donation Received & Perks Activated!",
+			"💖 Donation Received{{if .RoleID}} & Perks Activated{{end}}!",
 		)
 		desc = b.renderDonationTemplate(
 			b.Config.Donation.Format.Add.Desc,
 			tplData,
-			"Thank you so much for your support! Your donation has been recorded, and your perks are now active.",
+			"Thank you so much for your support! Your donation has been recorded{{if .RoleID}}, and your perks are now active{{end}}.",
 		)
 	}
 
@@ -346,8 +349,8 @@ func (b *DiscordBot) sendDonatorNotificationEmbed(
 		Description: desc,
 		Color:       0xe91e63, // Vibrant Pink
 		Fields: []*discordgo.MessageEmbedField{
-			{Name: "Amount Added", Value: fmt.Sprintf("$%.2f USD", amount), Inline: true},
-			{Name: "Cumulative Total", Value: fmt.Sprintf("$%.2f USD", totalUSD), Inline: true},
+			{Name: "Amount Added", Value: fmt.Sprintf("%.2f %s", amount, b.getCurrency()), Inline: true},
+			{Name: "Cumulative Total", Value: fmt.Sprintf("%.2f %s", totalUSD, b.getCurrency()), Inline: true},
 			{Name: "Duration Granted", Value: duration, Inline: true},
 			{Name: "Expiry Date", Value: expiryStr, Inline: false},
 		},
@@ -404,7 +407,7 @@ func (b *DiscordBot) handleDonationStatus(
 		Fields: []*discordgo.MessageEmbedField{
 			{
 				Name:   "Total Donated",
-				Value:  fmt.Sprintf("$%.2f USD", donator.TotalUSD),
+				Value:  fmt.Sprintf("%.2f %s", donator.TotalUSD, b.getCurrency()),
 				Inline: true,
 			},
 			{Name: "Status", Value: statusStr, Inline: true},
@@ -439,10 +442,11 @@ func (b *DiscordBot) handleDonationList(s *discordgo.Session, i *discordgo.Inter
 		timeLeft := d.ExpiryTime - now
 		sb.WriteString(
 			fmt.Sprintf(
-				"- **%s** (`%s`): $%.2f total (expires in %s | `%s`)\n",
+				"- **%s** (`%s`): %.2f %s total (expires in %s | `%s`)\n",
 				d.Username,
 				d.UserID,
 				d.TotalUSD,
+				b.getCurrency(),
 				formatDuration(timeLeft),
 				expiryStr,
 			),
@@ -545,8 +549,9 @@ func (b *DiscordBot) CheckAndClearExpiredDonators() (int, error) {
 		// Sync roles to strip expired state
 		b.syncUserDonatorRoles(b.Session, serverID, donator.UserID, donator.TotalUSD, 0)
 
-		// Send expired notification DM using beautiful Embed (unless silenced)
-		if !b.Config.Donation.Silent.Globally && !b.Config.Donation.Silent.OnExpiry {
+		// Send expired notification DM using beautiful Embed (unless silenced or below threshold)
+		if !b.Config.Donation.Silent.Globally && !b.Config.Donation.Silent.OnExpiry &&
+			b.hasDonatorRole(donator.TotalUSD) {
 			b.sendExpiredNotificationEmbed(b.Session, donator.UserID)
 		}
 
@@ -566,8 +571,9 @@ func (b *DiscordBot) CheckAndClearExpiredDonators() (int, error) {
 		if err == nil {
 			warnSecondsThreshold := int64(warnDays * 24 * 60 * 60)
 			for _, donator := range activeList {
-				// If expiry is within the warning threshold and they haven't been warned yet
-				if donator.ExpiryTime-now <= warnSecondsThreshold && donator.WarnedAt == 0 {
+				// If expiry is within the warning threshold and they haven't been warned yet (and they qualify for a role)
+				if donator.ExpiryTime-now <= warnSecondsThreshold && donator.WarnedAt == 0 &&
+					b.hasDonatorRole(donator.TotalUSD) {
 					b.sendWarningNotificationEmbed(b.Session, donator.UserID, donator.ExpiryTime)
 					if updateErr := b.DB.UpdateDonatorWarned(donator.UserID, now); updateErr != nil {
 						log.Printf(
@@ -605,13 +611,13 @@ func (b *DiscordBot) sendWarningNotificationEmbed(
 	timeLeft := expiry - time.Now().Unix()
 	timeLeftStr := formatDuration(timeLeft)
 
-	tplData := map[string]any{
-		"Username":   username,
-		"UserID":     userID,
-		"Expiry":     expiryStr,
-		"ExpiryUnix": expiry,
-		"TimeLeft":   timeLeftStr,
+	var totalUSD float64
+	if donator, ok := b.DB.GetDonator(userID); ok {
+		totalUSD = donator.TotalUSD
 	}
+
+	tplData := b.buildTplData(s, username, userID, totalUSD, expiry)
+	tplData["TimeLeft"] = timeLeftStr
 
 	title := b.renderDonationTemplate(
 		b.Config.Donation.Format.Warn.Title,
@@ -658,18 +664,13 @@ func (b *DiscordBot) sendExpiredNotificationEmbed(s *discordgo.Session, userID s
 	}
 
 	var expiry int64
-	expiryStr := "Expired"
+	var totalUSD float64
 	if donator, ok := b.DB.GetDonator(userID); ok {
 		expiry = donator.ExpiryTime
-		expiryStr = time.Unix(expiry, 0).Format("January 2, 2006 at 3:04 PM MST")
+		totalUSD = donator.TotalUSD
 	}
 
-	tplData := map[string]any{
-		"Username":   username,
-		"UserID":     userID,
-		"Expiry":     expiryStr,
-		"ExpiryUnix": expiry,
-	}
+	tplData := b.buildTplData(s, username, userID, totalUSD, expiry)
 
 	title := b.renderDonationTemplate(
 		b.Config.Donation.Format.Expiry.Title,
@@ -738,4 +739,66 @@ func joinStrings(parts []string, sep string) string {
 		res += sep + p
 	}
 	return res
+}
+
+func (b *DiscordBot) getServerName(s *discordgo.Session) string {
+	serverID := string(b.Config.Discord.Server)
+	if guild, err := s.State.Guild(serverID); err == nil && guild != nil {
+		return guild.Name
+	}
+	if guild, err := s.Guild(serverID); err == nil && guild != nil {
+		return guild.Name
+	}
+	return "our server"
+}
+
+func (b *DiscordBot) getHighestRoleID(totalUSD float64, isActive bool) string {
+	if !isActive {
+		return ""
+	}
+	var highestRole string
+	var maxAmount float64 = -1.0
+	for tierRole, minAmount := range b.Config.Donation.Tiers {
+		if tierRole == "" {
+			continue
+		}
+		if totalUSD >= minAmount && minAmount > maxAmount {
+			maxAmount = minAmount
+			highestRole = tierRole
+		}
+	}
+	return highestRole
+}
+
+func (b *DiscordBot) hasDonatorRole(totalUSD float64) bool {
+	return b.getHighestRoleID(totalUSD, true) != ""
+}
+
+func (b *DiscordBot) buildTplData(
+	s *discordgo.Session,
+	username, userID string,
+	totalUSD float64,
+	expiry int64,
+) map[string]any {
+	expiryStr := "Expired"
+	if expiry > 0 {
+		expiryStr = time.Unix(expiry, 0).Format("January 2, 2006 at 3:04 PM MST")
+	}
+	return map[string]any{
+		"Username":        username,
+		"UserID":          userID,
+		"Cumulative":      fmt.Sprintf("%.2f %s", totalUSD, b.getCurrency()),
+		"CumulativeValue": totalUSD,
+		"Expiry":          expiryStr,
+		"ExpiryUnix":      expiry,
+		"ServerName":      b.getServerName(s),
+		"RoleID":          b.getHighestRoleID(totalUSD, expiry > time.Now().Unix()),
+	}
+}
+
+func (b *DiscordBot) getCurrency() string {
+	if b.Config.Donation.Currency != "" {
+		return b.Config.Donation.Currency
+	}
+	return "USD"
 }
