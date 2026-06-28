@@ -11,6 +11,7 @@
 #   members.admins.allow       - Permit command access to server admins (default: true)
 #   members.moderators.allow   - Permit command access to server managers (default: false)
 #   members.others.allow       - Whitelist of user IDs permitted to run bot commands (default: [])
+#   members.roles.allow        - Whitelist of role IDs permitted to run bot commands (default: [])
 #   - - - - - - - - - - - - - -
 #   embed.author.url           - Icon image URL displayed on announcement embeds (optional)
 #   fields.comment_id          - Display the comment ID on tracker embeds (default: false)
@@ -25,6 +26,7 @@ mentions_disable = false
 members.admins.allow = true
 members.moderators.allow = false
 members.others.allow = []
+members.roles.allow = []
 # embed.author.url = "https://i.imgur.com/some-image.png"
 # fields.comment_id = false
 # display.user_content_image = false

@@ -72,6 +72,7 @@ type MembersConfig struct {
 	Admins     AllowConfig     `toml:"admins"`
 	Moderators AllowConfig     `toml:"moderators"`
 	Others     AllowListConfig `toml:"others"`
+	Roles      AllowListConfig `toml:"roles"`
 }
 
 type AllowConfig struct {
@@ -80,6 +81,29 @@ type AllowConfig struct {
 
 type AllowListConfig struct {
 	Allow []string `toml:"allow"`
+}
+
+func (a *AllowListConfig) UnmarshalTOML(fn func(any) error) error {
+	var raw struct {
+		Allow []any `toml:"allow"`
+	}
+	if err := fn(&raw); err != nil {
+		return err
+	}
+	a.Allow = make([]string, 0, len(raw.Allow))
+	for _, item := range raw.Allow {
+		switch v := item.(type) {
+		case string:
+			a.Allow = append(a.Allow, v)
+		case int64:
+			a.Allow = append(a.Allow, fmt.Sprintf("%d", v))
+		case float64:
+			a.Allow = append(a.Allow, fmt.Sprintf("%.0f", v))
+		default:
+			a.Allow = append(a.Allow, fmt.Sprintf("%v", v))
+		}
+	}
+	return nil
 }
 
 type MainConfig struct {

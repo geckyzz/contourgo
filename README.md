@@ -111,55 +111,60 @@ For initial database seeding without spamming Discord:
 
 ### Global Config
 
-| Key                                  | Type       | Description                                              | Required | Default              |
-| :----------------------------------- | :--------- | :------------------------------------------------------- | :------- | :------------------- |
-| **Discord Credentials & Setup**      |            |                                                          |          |                      |
-| `discord.token`                      | String     | Your Discord Bot Token                                   | Yes      | —                    |
-| `discord.server`                     | String/Int | Target server snowflake for instant command sync         | No       | —                    |
-| `discord.announce.channel`           | String/Int | Discord channel snowflake for notifications              | Yes      | —                    |
-| `discord.mentions_disable`           | Boolean    | Toggle to disable all mentions globally                  | No       | `false`              |
-| **Mentions Mapping**                 |            |                                                          |          |                      |
-| `discord.mentions`                   | Table/Map  | Map `@name` to `<@snowflake>` in message content         | No       | —                    |
-| **Embed Layout & Styling**           |            |                                                          |          |                      |
-| `discord.embed.author.url`           | String     | Global default static icon for the embed author          | No       | —                    |
-| `discord.fields.comment_id`          | Boolean    | Global default to toggle rendering comment ID            | No       | `false`              |
-| `discord.display.user_content_image` | Boolean    | Global default to toggle extracting user content images  | No       | `false`              |
-| **Scraper Scheduling**               |            |                                                          |          |                      |
-| `config.monitor.by`                  | String     | Check interval (e.g., `PT10M` or `10m`)                  | No       | `PT30M`              |
-| `config.time.uniform`                | Boolean    | Align check schedules to interval boundaries             | No       | `false`              |
-| **Service Integration APIs**         |            |                                                          |          |                      |
-| `config.nyaa.proxy.url`              | String     | URL to your Nyaa/Sukebei API Proxy                       | Yes      | —                    |
-| `config.nyaa.page.max`               | Integer    | Nyaa platform default page limit                         | No       | `0`                  |
-| `config.nyaa.sort`                   | String     | Nyaa platform default sort method                        | No       | `"comments"`         |
-| `config.nyaa.order`                  | String     | Nyaa platform default sort order                         | No       | `"desc"`             |
-| `config.nekobt.api.key`              | String     | Your nekoBT SSID API key                                 | No       | —                    |
-| `config.nekobt.page.max`             | Integer    | nekoBT platform default page limit                       | No       | `1`                  |
-| `config.nekobt.sort`                 | String     | nekoBT platform default sort method                      | No       | `"date"`             |
-| `config.anirena.api.key`             | String     | Your AniRena API key                                     | No       | —                    |
-| `config.anirena.page.max`            | Integer    | AniRena platform default page limit                      | No       | `0`                  |
-| `config.anirena.sort`                | String     | AniRena platform default sort method                     | No       | `"date"`             |
-| `config.anirena.order`               | String     | AniRena platform default sort order                      | No       | `"desc"`             |
-| `config.twitter.nitter_url`          | String     | Default base URL of Nitter instance to use               | No       | `https://nitter.net` |
-| `config.twitter.embed_service`       | String     | Default global embed service domain/short-name to use    | No       | `x.com`              |
-| `config.twitter.exclude_reposts`     | Boolean    | Default global setting to ignore retweet/repost items    | No       | `false`              |
-| **Donation Management**              |            |                                                          |          |                      |
-| `donation.currency`                  | String     | Currency code suffix (e.g. `USD`, `EUR`, `CAD`)          | No       | `"USD"`              |
-| `donation.perk_multiplier`           | Float      | Cost per 1 month of role perks duration                  | No       | `9.99`               |
-| `donation.max_stacks`                | Integer    | Max months perk duration stack limit                     | No       | `12`                 |
-| `donation.notify_warn_days`          | Integer    | Days before expiry to send warning notification          | No       | `3`                  |
-| `donation.silent.globally`           | Boolean    | Suppress all donator DMs globally                        | No       | `false`              |
-| `donation.silent.on_warning`         | Boolean    | Suppress warning DM notifications                        | No       | `false`              |
-| `donation.silent.on_expiry`          | Boolean    | Suppress expiry DM notifications                         | No       | `false`              |
-| `donation.tiers`                     | Map/Table  | Multi-tier role mappings: `RoleID = MinAmountUSD`        | No       | —                    |
-| **DM Notification Formats**          |            |                                                          |          |                      |
-| `donation.format.add.title`          | String     | Go template for donation activation DM Embed Title       | No       | _(Default Text)_     |
-| `donation.format.add.desc`           | String     | Go template for donation activation DM Embed Description | No       | _(Default Text)_     |
-| `donation.format.renew.title`        | String     | Go template for renewal/extension DM Embed Title         | No       | _(Default Text)_     |
-| `donation.format.renew.desc`         | String     | Go template for renewal/extension DM Embed Description   | No       | _(Default Text)_     |
-| `donation.format.warn.title`         | String     | Go template for warning expiration DM Embed Title        | No       | _(Default Text)_     |
-| `donation.format.warn.desc`          | String     | Go template for warning expiration DM Embed Description  | No       | _(Default Text)_     |
-| `donation.format.expiry.title`       | String     | Go template for final expiry DM Embed Title              | No       | _(Default Text)_     |
-| `donation.format.expiry.desc`        | String     | Go template for final expiry DM Embed Description        | No       | _(Default Text)_     |
+| Key                                  | Type       | Description                                                 | Required | Default              |
+| :----------------------------------- | :--------- | :---------------------------------------------------------- | :------- | :------------------- |
+| **Discord Credentials & Setup**      |            |                                                             |          |                      |
+| `discord.token`                      | String     | Your Discord Bot Token                                      | Yes      | —                    |
+| `discord.server`                     | String/Int | Target server snowflake for instant command sync            | No       | —                    |
+| `discord.announce.channel`           | String/Int | Discord channel snowflake for notifications                 | Yes      | —                    |
+| `discord.mentions_disable`           | Boolean    | Toggle to disable all mentions globally                     | No       | `false`              |
+| **Access Control & Permissions**     |            |                                                             |          |                      |
+| `discord.members.admins.allow`       | Boolean    | Allow server administrators to run commands                 | No       | `true`               |
+| `discord.members.moderators.allow`   | Boolean    | Allow server managers (Manage Messages) to run commands     | No       | `false`              |
+| `discord.members.others.allow`       | List/Array | Specific Discord User snowflake IDs allowed to run commands | No       | `[]`                 |
+| `discord.members.roles.allow`        | List/Array | Specific Discord Role snowflake IDs allowed to run commands | No       | `[]`                 |
+| **Mentions Mapping**                 |            |                                                             |          |                      |
+| `discord.mentions`                   | Table/Map  | Map `@name` to `<@snowflake>` in message content            | No       | —                    |
+| **Embed Layout & Styling**           |            |                                                             |          |                      |
+| `discord.embed.author.url`           | String     | Global default static icon for the embed author             | No       | —                    |
+| `discord.fields.comment_id`          | Boolean    | Global default to toggle rendering comment ID               | No       | `false`              |
+| `discord.display.user_content_image` | Boolean    | Global default to toggle extracting user content images     | No       | `false`              |
+| **Scraper Scheduling**               |            |                                                             |          |                      |
+| `config.monitor.by`                  | String     | Check interval (e.g., `PT10M` or `10m`)                     | No       | `PT30M`              |
+| `config.time.uniform`                | Boolean    | Align check schedules to interval boundaries                | No       | `false`              |
+| **Service Integration APIs**         |            |                                                             |          |                      |
+| `config.nyaa.proxy.url`              | String     | URL to your Nyaa/Sukebei API Proxy                          | Yes      | —                    |
+| `config.nyaa.page.max`               | Integer    | Nyaa platform default page limit                            | No       | `0`                  |
+| `config.nyaa.sort`                   | String     | Nyaa platform default sort method                           | No       | `"comments"`         |
+| `config.nyaa.order`                  | String     | Nyaa platform default sort order                            | No       | `"desc"`             |
+| `config.nekobt.api.key`              | String     | Your nekoBT SSID API key                                    | No       | —                    |
+| `config.nekobt.page.max`             | Integer    | nekoBT platform default page limit                          | No       | `1`                  |
+| `config.nekobt.sort`                 | String     | nekoBT platform default sort method                         | No       | `"date"`             |
+| `config.anirena.api.key`             | String     | Your AniRena API key                                        | No       | —                    |
+| `config.anirena.page.max`            | Integer    | AniRena platform default page limit                         | No       | `0`                  |
+| `config.anirena.sort`                | String     | AniRena platform default sort method                        | No       | `"date"`             |
+| `config.anirena.order`               | String     | AniRena platform default sort order                         | No       | `"desc"`             |
+| `config.twitter.nitter_url`          | String     | Default base URL of Nitter instance to use                  | No       | `https://nitter.net` |
+| `config.twitter.embed_service`       | String     | Default global embed service domain/short-name to use       | No       | `x.com`              |
+| `config.twitter.exclude_reposts`     | Boolean    | Default global setting to ignore retweet/repost items       | No       | `false`              |
+| **Donation Management**              |            |                                                             |          |                      |
+| `donation.currency`                  | String     | Currency code suffix (e.g. `USD`, `EUR`, `CAD`)             | No       | `"USD"`              |
+| `donation.perk_multiplier`           | Float      | Cost per 1 month of role perks duration                     | No       | `9.99`               |
+| `donation.max_stacks`                | Integer    | Max months perk duration stack limit                        | No       | `12`                 |
+| `donation.notify_warn_days`          | Integer    | Days before expiry to send warning notification             | No       | `3`                  |
+| `donation.silent.globally`           | Boolean    | Suppress all donator DMs globally                           | No       | `false`              |
+| `donation.silent.on_warning`         | Boolean    | Suppress warning DM notifications                           | No       | `false`              |
+| `donation.silent.on_expiry`          | Boolean    | Suppress expiry DM notifications                            | No       | `false`              |
+| `donation.tiers`                     | Map/Table  | Multi-tier role mappings: `RoleID = MinAmountUSD`           | No       | —                    |
+| **DM Notification Formats**          |            |                                                             |          |                      |
+| `donation.format.add.title`          | String     | Go template for donation activation DM Embed Title          | No       | _(Default Text)_     |
+| `donation.format.add.desc`           | String     | Go template for donation activation DM Embed Description    | No       | _(Default Text)_     |
+| `donation.format.renew.title`        | String     | Go template for renewal/extension DM Embed Title            | No       | _(Default Text)_     |
+| `donation.format.renew.desc`         | String     | Go template for renewal/extension DM Embed Description      | No       | _(Default Text)_     |
+| `donation.format.warn.title`         | String     | Go template for warning expiration DM Embed Title           | No       | _(Default Text)_     |
+| `donation.format.warn.desc`          | String     | Go template for warning expiration DM Embed Description     | No       | _(Default Text)_     |
+| `donation.format.expiry.title`       | String     | Go template for final expiry DM Embed Title                 | No       | _(Default Text)_     |
+| `donation.format.expiry.desc`        | String     | Go template for final expiry DM Embed Description           | No       | _(Default Text)_     |
 
 #### DM Notification Placeholders
 

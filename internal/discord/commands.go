@@ -544,6 +544,16 @@ func (b *DiscordBot) hasInteractionAccess(i *discordgo.InteractionCreate) bool {
 		return true
 	}
 
+	if i.Member != nil && len(b.Config.Discord.Members.Roles.Allow) > 0 {
+		for _, allowedRoleID := range b.Config.Discord.Members.Roles.Allow {
+			for _, userRoleID := range i.Member.Roles {
+				if allowedRoleID == userRoleID {
+					return true
+				}
+			}
+		}
+	}
+
 	if i.GuildID == "" {
 		return false
 	}
