@@ -37,26 +37,7 @@ func (s *AnimeToshoOldScraper) ScrapeComments(page int, feedback bool) ([]ATComm
 	}
 
 	u := fmt.Sprintf("%s/comments?%s", s.baseURL, qVals.Encode())
-	req, err := http.NewRequest("GET", u, nil)
-	if err != nil {
-		return nil, false, err
-	}
-	req.Header.Set(
-		"User-Agent",
-		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-	)
-
-	resp, err := s.client.Do(req)
-	if err != nil {
-		return nil, false, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, false, fmt.Errorf("HTTP error %d", resp.StatusCode)
-	}
-
-	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	doc, err := fetchGoqueryDocument(s.client, u)
 	if err != nil {
 		return nil, false, err
 	}
@@ -120,18 +101,7 @@ func (s *AnimeToshoOldScraper) ScrapeComments(page int, feedback bool) ([]ATComm
 			return
 		}
 
-		username := strings.TrimSpace(commentUser.Find("strong").Text())
-		if strings.HasPrefix(username, "Anonymous") {
-			if strings.Contains(username, ":") {
-				parts := strings.SplitN(username, ":", 2)
-				nick := strings.Trim(parts[1], " \t\r\n\"'")
-				if nick != "" {
-					username = fmt.Sprintf("Anonymous (%s)", nick)
-				} else {
-					username = "Anonymous"
-				}
-			}
-		}
+		username := parseATUsername(commentUser.Find("strong").Text())
 
 		commentUserCopy := commentUser.Clone()
 		commentUserCopy.Find("br").ReplaceWithHtml(" ")

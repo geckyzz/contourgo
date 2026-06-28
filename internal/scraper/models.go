@@ -59,6 +59,42 @@ type ATComment struct {
 	Type      string // Torrent, Feedback, DDL, Question, etc.
 }
 
+func parseATUsername(username string) string {
+	username = strings.TrimSpace(username)
+	if strings.HasPrefix(username, "Anonymous") && strings.Contains(username, ":") {
+		parts := strings.SplitN(username, ":", 2)
+		nick := strings.Trim(parts[1], " \t\r\n\"'")
+		if nick != "" {
+			return fmt.Sprintf("Anonymous (%s)", nick)
+		}
+		return "Anonymous"
+	}
+	return username
+}
+
+func fetchGoqueryDocument(client *http.Client, targetURL string) (*goquery.Document, error) {
+	req, err := http.NewRequest("GET", targetURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set(
+		"User-Agent",
+		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+	)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("HTTP error %d", resp.StatusCode)
+	}
+
+	return goquery.NewDocumentFromReader(resp.Body)
+}
+
 func parseATTime(timeStr string, refTime time.Time) int64 {
 	timeStr = strings.TrimSpace(timeStr)
 	timeStr = strings.TrimPrefix(timeStr, "—")
@@ -276,23 +312,7 @@ func ResolveParentInfo(
 	targetURL string,
 	commentID string,
 ) (parentID string, parentText string, fullTitle string, targetUsername string) {
-	req, err := http.NewRequest("GET", targetURL, nil)
-	if err != nil {
-		return "", "", "", ""
-	}
-	req.Header.Set(
-		"User-Agent",
-		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-	)
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", "", "", ""
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return "", "", "", ""
-	}
-	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	doc, err := fetchGoqueryDocument(client, targetURL)
 	if err != nil {
 		return "", "", "", ""
 	}
@@ -310,16 +330,7 @@ func ResolveParentInfo(
 		container := bodySel.Parent()
 		userSel := container.Find("div.comment_user").First()
 		if userSel.Length() > 0 {
-			u := strings.TrimSpace(userSel.Find("strong").Text())
-			if strings.HasPrefix(u, "Anonymous") && strings.Contains(u, ":") {
-				parts := strings.SplitN(u, ":", 2)
-				nick := strings.Trim(parts[1], " \t\r\n\"'")
-				if nick != "" {
-					targetUsername = fmt.Sprintf("Anonymous (%s)", nick)
-				}
-			} else if u != "" {
-				targetUsername = u
-			}
+			targetUsername = parseATUsername(userSel.Find("strong").Text())
 		}
 	}
 
