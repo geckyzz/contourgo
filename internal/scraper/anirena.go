@@ -57,6 +57,14 @@ type AnirenaComment struct {
 	DeletedAt        *string `json:"deleted_at"`
 }
 
+func (c *AnirenaComment) GetTimestamp() int64 {
+	parsedTime, err := time.Parse("2006-01-02 15:04:05", c.CreatedAt)
+	if err == nil {
+		return parsedTime.Unix()
+	}
+	return time.Now().Unix()
+}
+
 type AnirenaCommentsResult struct {
 	TorrentID  string           `json:"torrent_id"`
 	Page       int              `json:"page"`

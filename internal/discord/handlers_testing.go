@@ -177,13 +177,7 @@ func (b *DiscordBot) handleSlashTest(
 			// Resolve parent message using the shared helper
 			_, parentMessage := scraper.ResolveNyaaParent(comments, targetIndex, targetComment.Text)
 
-			var ts int64
-			parsedTime, err := time.Parse(time.RFC3339, targetComment.Timestamp)
-			if err == nil {
-				ts = parsedTime.Unix()
-			} else {
-				ts = time.Now().Unix()
-			}
+			ts := targetComment.GetTimestamp()
 
 			dbTorrent := db.Torrent{
 				Service:   service,
@@ -435,13 +429,7 @@ func (b *DiscordBot) handleSlashTest(
 			}
 
 			firstComment := comments[0]
-			var ts int64
-			parsedTime, err := time.Parse("2006-01-02 15:04:05", firstComment.CreatedAt)
-			if err == nil {
-				ts = parsedTime.Unix()
-			} else {
-				ts = time.Now().Unix()
-			}
+			ts := firstComment.GetTimestamp()
 
 			dbTorrent := db.Torrent{Service: "anirena", TorrentID: targetTorrent.ID, Title: targetTorrent.FullTitle(), Uploader: targetTorrent.Uploader}
 			dbComment := db.Comment{Service: "anirena", TorrentID: targetTorrent.ID, CommentID: firstComment.ID, Username: firstComment.Username, Message: firstComment.Body, Timestamp: ts, UserRole: firstComment.Role}

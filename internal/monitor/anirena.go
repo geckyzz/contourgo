@@ -155,13 +155,7 @@ func (m *Monitor) checkAnirena(force bool, targetKey string) {
 
 						for _, c := range comments {
 							if !m.db.IsCommentStored("anirena", t.ID, c.ID) {
-								var ts int64
-								parsedTime, err := time.Parse("2006-01-02 15:04:05", c.CreatedAt)
-								if err == nil {
-									ts = parsedTime.Unix()
-								} else {
-									ts = time.Now().Unix()
-								}
+								ts := c.GetTimestamp()
 								m.db.StoreComment(
 									"anirena",
 									t.ID,

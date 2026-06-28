@@ -146,13 +146,7 @@ func (m *Monitor) checkNyaaSukebeiService(service string, force bool, targetKey 
 						for idx, c := range comments {
 							commentIDStr := strconv.Itoa(c.ID)
 							if !m.db.IsCommentStored(service, torrentIDStr, commentIDStr) {
-								var ts int64
-								parsedTime, err := time.Parse(time.RFC3339, c.Timestamp)
-								if err == nil {
-									ts = parsedTime.Unix()
-								} else {
-									ts = time.Now().Unix()
-								}
+								ts := c.GetTimestamp()
 
 								parentID, parentMessage := scraper.ResolveNyaaParent(
 									comments,

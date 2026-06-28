@@ -338,6 +338,14 @@ func (c *NyaaComment) Unescape() {
 	c.Text = html.UnescapeString(c.Text)
 }
 
+func (c *NyaaComment) GetTimestamp() int64 {
+	parsedTime, err := time.Parse(time.RFC3339, c.Timestamp)
+	if err == nil {
+		return parsedTime.Unix()
+	}
+	return time.Now().Unix()
+}
+
 func (c *ATComment) Unescape() {
 	c.Title = html.UnescapeString(c.Title)
 	c.Username = html.UnescapeString(c.Username)
