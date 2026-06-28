@@ -432,6 +432,27 @@ func ParseISO8601Duration(s string) time.Duration {
 
 func (cfg *Config) LogConfigSummary() {
 	log.Println("--- Configuration Summary ---")
+	log.Printf("Discord Server ID: %s", cfg.Discord.Server)
+	log.Printf("Discord Announce Channel: %s", cfg.Discord.Announce.Channel)
+	log.Printf("Discord Comment ID Visible: %t", func() bool {
+		if cfg.Discord.Fields.CommentID != nil {
+			return *cfg.Discord.Fields.CommentID
+		}
+		return false
+	}())
+	log.Printf("Discord User Content Image: %t", func() bool {
+		if cfg.Discord.Display.UserContentImage != nil {
+			return *cfg.Discord.Display.UserContentImage
+		}
+		return false
+	}())
+	log.Printf(
+		"Donation Settings: Perk Multiplier=%.2f, Max Stacks=%d, Warn Days=%d, Silent Globally=%t",
+		cfg.Donation.PerkMultiplier,
+		cfg.Donation.MaxStacks,
+		cfg.Donation.NotifyWarnDays,
+		cfg.Donation.Silent.Globally,
+	)
 	log.Printf(
 		"Monitor Interval: %s (%v)",
 		cfg.Config.Monitor.By,
