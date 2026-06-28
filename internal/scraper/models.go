@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"html"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -403,4 +404,37 @@ func (t *TsukihimeTorrentDetails) Unescape() {
 	if t.Group != nil {
 		t.Group.Name = html.UnescapeString(t.Group.Name)
 	}
+}
+
+type NekoBTNotification struct {
+	ID   string `json:"id"`
+	Data string `json:"data"`
+	Seen bool   `json:"seen"`
+}
+
+var (
+	uRegex  = regexp.MustCompile(`<u:(\d+):([^>]+)>`)
+	gRegex  = regexp.MustCompile(`<g:(\d+):([^>]+)>`)
+	iRegex  = regexp.MustCompile(`<i:(\d+):([^>]+)>`)
+	viRegex = regexp.MustCompile(`<vi:(\d+):([^>]+)>`)
+	geRegex = regexp.MustCompile(`<ge:(\d+):([^>]+)>`)
+	tRegex  = regexp.MustCompile(`<t:(\d+):([^>]+)>`)
+	tcRegex = regexp.MustCompile(`<tc:(\d+):(\d+):([^>]+)>`)
+	rRegex  = regexp.MustCompile(`<r:(\d+):([^>]+)>`)
+)
+
+func ParseNekoBTNotificationText(text string) string {
+	text = tcRegex.ReplaceAllString(text, "[$3](https://nekobt.to/torrents/$1#com-$2)")
+	text = uRegex.ReplaceAllString(text, "[$2](https://nekobt.to/users/$1)")
+	text = gRegex.ReplaceAllString(text, "[$2](https://nekobt.to/groups/$1)")
+	text = iRegex.ReplaceAllString(text, "[View Invite](https://nekobt.to/invites/$1/accept/$2)")
+	text = viRegex.ReplaceAllString(text, "[$2](https://nekobt.to/invites/$1)")
+	text = geRegex.ReplaceAllString(text, "[$2](https://nekobt.to/groups/$1/edit)")
+	text = tRegex.ReplaceAllString(text, "[$2](https://nekobt.to/torrents/$1)")
+	text = rRegex.ReplaceAllString(text, "[$2](https://nekobt.to/reports/$1)")
+
+	cleanLinkQuotes := regexp.MustCompile(`\["([^"]+)"\]\(`)
+	text = cleanLinkQuotes.ReplaceAllString(text, "[$1](")
+
+	return text
 }

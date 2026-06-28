@@ -777,3 +777,30 @@ func trimField(s string) string {
 	}
 	return s
 }
+
+func (b *DiscordBot) BuildNekoBTNotificationEmbed(
+	service string,
+	torrent db.Torrent,
+	comment db.Comment,
+) *discordgo.MessageEmbed {
+	embed := &discordgo.MessageEmbed{
+		Title:       "NekoBT Notification",
+		Description: comment.Message,
+		Color:       0x8c4fff, // nekoBT Purple
+		Footer: &discordgo.MessageEmbedFooter{
+			Text: "nekoBT Notification",
+		},
+	}
+
+	b.setEmbedTimestamp(embed, comment.Timestamp)
+
+	if comment.CommentID != "" {
+		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
+			Name:   "Notification ID",
+			Value:  fmt.Sprintf("`%s`", comment.CommentID),
+			Inline: true,
+		})
+	}
+
+	return embed
+}

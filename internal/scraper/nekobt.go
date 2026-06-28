@@ -1,6 +1,7 @@
 package scraper
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -203,4 +204,62 @@ func (s *NekoBTScraper) flattenComments(
 		}
 	}
 	return flat
+}
+
+func (s *NekoBTScraper) FetchNotifications() ([]NekoBTNotification, error) {
+	u := fmt.Sprintf("%s/users/@me/notifications", s.baseURL)
+	req, _ := http.NewRequest("GET", u, nil)
+
+	body, err := s.doRequest(req)
+	if err != nil {
+		return nil, err
+	}
+
+	var nResp NekoBTResponse
+	if err := json.Unmarshal(body, &nResp); err != nil {
+		return nil, err
+	}
+
+	if nResp.Error {
+		return nil, fmt.Errorf("nekoBT error: %s", nResp.Message)
+	}
+
+	dataBytes, _ := json.Marshal(nResp.Data)
+	var notifications []NekoBTNotification
+	if err := json.Unmarshal(dataBytes, &notifications); err != nil {
+		return nil, err
+	}
+
+	return notifications, nil
+}
+
+func (s *NekoBTScraper) MarkNotificationsAsRead(ids []string) error {
+	u := fmt.Sprintf("%s/users/@me/notifications/read", s.baseURL)
+
+	payload := map[string]any{
+		"ids": ids,
+	}
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	req, _ := http.NewRequest("PUT", u, bytes.NewReader(payloadBytes))
+	req.Header.Set("Content-Type", "application/json")
+
+	body, err := s.doRequest(req)
+	if err != nil {
+		return err
+	}
+
+	var nResp NekoBTResponse
+	if err := json.Unmarshal(body, &nResp); err != nil {
+		return err
+	}
+
+	if nResp.Error {
+		return fmt.Errorf("nekoBT error: %s", nResp.Message)
+	}
+
+	return nil
 }

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/geckyzz/contourgo/internal/scraper"
 )
 
 func (b *DiscordBot) registerSlashCommands(s *discordgo.Session) {
@@ -488,6 +489,10 @@ func (b *DiscordBot) hasInteractionAccess(i *discordgo.InteractionCreate) bool {
 }
 
 func (b *DiscordBot) onInteractionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	if i.Type == discordgo.InteractionMessageComponent {
+		b.handleInteractionComponent(s, i)
+		return
+	}
 	if i.Type != discordgo.InteractionApplicationCommand {
 		return
 	}
@@ -587,5 +592,136 @@ func (b *DiscordBot) sendFollowupMessage(
 	})
 	if err != nil {
 		log.Printf("Error sending followup: %v", err)
+	}
+}
+
+func (b *DiscordBot) handleInteractionComponent(
+	s *discordgo.Session,
+	i *discordgo.InteractionCreate,
+) {
+	data := i.MessageComponentData()
+	customID := data.CustomID
+
+	if strings.HasPrefix(customID, "nekobt_read:") {
+		parts := strings.Split(customID, ":")
+		if len(parts) < 4 {
+			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Content: "❌ Invalid interaction data.",
+					Flags:   discordgo.MessageFlagsEphemeral,
+				},
+			})
+			return
+		}
+
+		notificationID := parts[1]
+		service := parts[2]
+		monitorKey := parts[3]
+
+		if !b.hasInteractionAccess(i) {
+			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Content: "❌ You do not have permission to mark this notification as read.",
+					Flags:   discordgo.MessageFlagsEphemeral,
+				},
+			})
+			return
+		}
+
+		log.Printf(
+			"[Component] User clicked Mark as Read for notification %s (service: %s, monitor: %s)",
+			notificationID,
+			service,
+			monitorKey,
+		)
+
+		cfg := b.Config
+		monitorMap, exists := cfg.Monitors[service]
+		if !exists {
+			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Content: "❌ Monitor service not found in configuration.",
+					Flags:   discordgo.MessageFlagsEphemeral,
+				},
+			})
+			return
+		}
+
+		_, exists = monitorMap[monitorKey]
+		if !exists {
+			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Content: "❌ Specific monitor not found in configuration.",
+					Flags:   discordgo.MessageFlagsEphemeral,
+				},
+			})
+			return
+		}
+
+		apiKey := cfg.Config.Nekobt.API.Key
+		if apiKey == "" {
+			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Content: "❌ NekoBT API key is not configured.",
+					Flags:   discordgo.MessageFlagsEphemeral,
+				},
+			})
+			return
+		}
+
+		scr := scraper.NewNekoBTScraper(apiKey)
+		err := scr.MarkNotificationsAsRead([]string{notificationID})
+		if err != nil {
+			log.Printf("[Component] Error marking notification %s as read: %v", notificationID, err)
+			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Content: fmt.Sprintf("❌ Error marking notification as read: %v", err),
+					Flags:   discordgo.MessageFlagsEphemeral,
+				},
+			})
+			return
+		}
+
+		log.Printf("[Component] Successfully marked notification %s as read", notificationID)
+
+		var components []discordgo.MessageComponent
+		if i.Message != nil && len(i.Message.Components) > 0 {
+			if row, ok := i.Message.Components[0].(*discordgo.ActionsRow); ok {
+				var editedButtons []discordgo.MessageComponent
+				for _, comp := range row.Components {
+					if btn, ok := comp.(*discordgo.Button); ok {
+						if btn.CustomID == customID {
+							btn.Disabled = true
+							btn.Label = "Read"
+							btn.Style = discordgo.SecondaryButton
+						}
+						editedButtons = append(editedButtons, btn)
+					} else {
+						editedButtons = append(editedButtons, comp)
+					}
+				}
+				components = []discordgo.MessageComponent{
+					discordgo.ActionsRow{
+						Components: editedButtons,
+					},
+				}
+			}
+		}
+
+		err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseUpdateMessage,
+			Data: &discordgo.InteractionResponseData{
+				Components: components,
+			},
+		})
+		if err != nil {
+			log.Printf("[Component] Error responding to interaction: %v", err)
+		}
 	}
 }

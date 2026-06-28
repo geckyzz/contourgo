@@ -40,6 +40,11 @@ func (m *Monitor) checkNekoBT(force bool) {
 		prefix := fmt.Sprintf("[NEKOBT][%s]", key)
 		log.Printf("%s Processing monitor", prefix)
 
+		if key == "notification" || key == "notifications" {
+			m.checkNekoBTNotification("nekobt", key, monitorCfg, force)
+			continue
+		}
+
 		sort := cfg.ResolveNekobtSort(monitorCfg)
 
 		params := url.Values{}

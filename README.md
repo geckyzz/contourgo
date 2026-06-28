@@ -8,7 +8,10 @@ torrent trackers. Designed to be a robust, always-online replacement for legacy 
 
 ## 🚀 Features
 
-- **Multi-Site Monitoring**: Support for Nyaa/Sukebei, AnimeTosho (old/`.org` and new/clone/`.xyz`), nekoBT, AniRena, TsukiHime, and Twitter/X (via Nitter RSS).
+- **Multi-Site Monitoring**: Support for Nyaa/Sukebei, AnimeTosho (old/`.org` and new/clone/`.xyz`), nekoBT (torrents, comments, and user notifications), AniRena, TsukiHime, and Twitter/X (via Nitter RSS).
+- **nekoBT User Notifications**: Poll user notifications from nekoBT:
+  - **Interactive Button**: Message embeds are sent with a "Mark as Read" button. Clicking this calls the nekoBT API to mark that specific notification as read, and updates the Discord button component.
+  - **Target channel override**: Support routing user notifications to dedicated/private channels to avoid public PII leakage.
 - **Twitter/X Monitoring**: Poll public Twitter accounts via Nitter RSS feeds. Supports per-account:
   - **Embed services**: Rewrite tweet links to `fixupx.com`, `vxtwitter.com`, `fxtwitter.com`, `twittpr.com`, or custom domains for Discord previews.
   - **Custom message format**: Go template placeholders (`{{.Account}}`, `{{.Link}}`, etc.) to format text messages instead of default embeds.
@@ -266,6 +269,16 @@ it will monitor general feedback comments instead of specific torrent comments.
 
 If you provide a keyword on feedback monitor, it will be matched against the comment message content
 (case-insensitive).
+
+#### NekoBT Notifications Monitoring
+
+**NekoBT** (`nekobt`) supports monitoring user notifications.
+
+If you define a monitor block with the keyname `notification` or `notifications` (for example, `[monitors.nekobt.notification]`), it will poll user notifications instead of torrent comments.
+
+- **Interactive Buttons**: The Discord announcement sent for each notification includes a "Mark as Read" button.
+- **Access Control**: Only authorized administrators or moderators (based on the bot's permission rules) are allowed to click the button and mark the notification as read.
+- **PII Leakage Prevention**: It is highly recommended to override the target channel (using `discord.channel = "CHANNEL_ID"`) inside the notification monitor block to route these private alerts to a restricted/private channel.
 
 #### Mention Mapping (`discord.mentions`)
 

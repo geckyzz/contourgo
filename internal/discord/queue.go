@@ -1,6 +1,7 @@
 package discord
 
 import (
+	"fmt"
 	"log"
 	"strings"
 	"time"
@@ -32,7 +33,9 @@ func (b *DiscordBot) queueWorker() {
 
 			a := pending[0]
 
-			if a.Torrent.Title == "" || a.Comment.Username == "" {
+			isNotification := a.Service == "nekobt" &&
+				(a.TorrentID == "notification" || a.TorrentID == "notifications")
+			if !isNotification && (a.Torrent.Title == "" || a.Comment.Username == "") {
 				log.Printf(
 					"[QUEUE] Skipping announcement %d for %s: missing critical data (title or username)",
 					a.ID,
@@ -64,12 +67,33 @@ func (b *DiscordBot) queueWorker() {
 			)
 
 			content := b.GetMentionsForText(a.Comment.Message, a.MentionsDisable)
-			_, err = b.Session.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
+			msgSend := &discordgo.MessageSend{
 				Content: content,
 				Embeds: []*discordgo.MessageEmbed{
 					embed,
 				},
-			})
+			}
+			if isNotification {
+				customID := fmt.Sprintf(
+					"nekobt_read:%s:%s:%s",
+					a.Comment.CommentID,
+					a.Service,
+					a.TorrentID,
+				)
+				msgSend.Components = []discordgo.MessageComponent{
+					discordgo.ActionsRow{
+						Components: []discordgo.MessageComponent{
+							discordgo.Button{
+								Label:    "Mark as Read",
+								Style:    discordgo.SuccessButton,
+								CustomID: customID,
+							},
+						},
+					},
+				}
+			}
+
+			_, err = b.Session.ChannelMessageSendComplex(channelID, msgSend)
 			if err != nil {
 				log.Printf("[QUEUE] Error sending embed for ID %d: %v", a.ID, err)
 				b.DB.FailAnnouncement(a.ID, err.Error())
@@ -107,6 +131,13 @@ func (b *DiscordBot) buildEmbedForService(a db.QueuedAnnouncement) *discordgo.Me
 	case strings.HasPrefix(a.Service, "animetosho"):
 		return b.BuildATEmbed(a.Service, a.Torrent, a.Comment, a.ShowCommentID, a.ResolveImage)
 	case a.Service == "nekobt":
+		if a.TorrentID == "notification" || a.TorrentID == "notifications" {
+			return b.BuildNekoBTNotificationEmbed(
+				a.Service,
+				a.Torrent,
+				a.Comment,
+			)
+		}
 		return b.BuildNekoBTEmbed(
 			a.Torrent,
 			a.Comment,

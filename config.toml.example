@@ -197,6 +197,16 @@ keywords = ["some search term"]
 sort = "comments"
 discord.embed.author.url = "https://i.imgur.com/some-nekobt-image.png"
 
+# ─── NekoBT Notifications ─────────────────────────────────────────────────────
+# NekoBT notification monitors live under [monitor.nekobt.notification]
+# or [monitor.nekobt.notifications] and support:
+#   discord.channel - Private channel to route notifications to (recommended to avoid PII)
+#   (note: uses config.nekobt.api.key for authentication)
+#
+[monitor.nekobt.notification]
+discord.channel = "1234567890" # Route to private channel to avoid PII leakage
+
+
 # ─── AniRena ──────────────────────────────────────────────────────────────────
 # AniRena monitors live under [monitor.anirena.<key>] and support:
 #   keywords        - List of query keywords to search (optional)
