@@ -215,3 +215,31 @@ func (b *DiscordBot) onReady(s *discordgo.Session, r *discordgo.Ready) {
 	// Register Guild Slash Commands
 	b.registerSlashCommands(s)
 }
+
+func (b *DiscordBot) GetPausedMonitorsCount() int {
+	b.pausedMonitorsMu.RLock()
+	defer b.pausedMonitorsMu.RUnlock()
+	count := 0
+	for _, inner := range b.pausedMonitors {
+		for _, paused := range inner {
+			if paused {
+				count++
+			}
+		}
+	}
+	return count
+}
+
+func (b *DiscordBot) GetPausedMonitorsList() []string {
+	b.pausedMonitorsMu.RLock()
+	defer b.pausedMonitorsMu.RUnlock()
+	var list []string
+	for svc, inner := range b.pausedMonitors {
+		for key, paused := range inner {
+			if paused {
+				list = append(list, fmt.Sprintf("%s/%s", svc, key))
+			}
+		}
+	}
+	return list
+}

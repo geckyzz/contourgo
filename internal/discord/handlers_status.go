@@ -12,7 +12,11 @@ import (
 )
 
 func (b *DiscordBot) handleSlashStatus(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	// Query stats and database latency
+	dbStart := time.Now()
 	torrents, comments, err := b.DB.GetStats()
+	dbDuration := time.Since(dbStart)
+
 	if err != nil {
 		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -23,10 +27,21 @@ func (b *DiscordBot) handleSlashStatus(s *discordgo.Session, i *discordgo.Intera
 		return
 	}
 
+	// Database health string
+	dbHealth := fmt.Sprintf("🟢 Healthy (%.2fms)", float64(dbDuration.Microseconds())/1000.0)
+
+	// Fetch pending queue size
+	var pendingQueue int
+	_ = b.DB.Conn.QueryRow("SELECT COUNT(*) FROM announcement_queue WHERE posted_at IS NULL AND retry_count < 5").
+		Scan(&pendingQueue)
+
 	totalMonitors := 0
 	for _, sub := range b.Config.Monitors {
 		totalMonitors += len(sub)
 	}
+
+	pausedCount := b.GetPausedMonitorsCount()
+	pausedList := b.GetPausedMonitorsList()
 
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
@@ -39,32 +54,49 @@ func (b *DiscordBot) handleSlashStatus(s *discordgo.Session, i *discordgo.Intera
 
 	v, sha := GetVersionInfo()
 
-	embed := &discordgo.MessageEmbed{
-		Title: "📊 Bot Status & Diagnostics",
-		Color: 0x2ecc71,
-		Fields: []*discordgo.MessageEmbedField{
-			{Name: "Active Monitors", Value: fmt.Sprintf("%d", totalMonitors), Inline: true},
-			{Name: "Torrents Tracked", Value: fmt.Sprintf("%d", torrents), Inline: true},
-			{Name: "Comments Stored", Value: fmt.Sprintf("%d", comments), Inline: true},
-			{Name: "Check Interval", Value: b.Config.Config.Monitor.By, Inline: true},
-			{Name: "Database Size", Value: dbSize, Inline: true},
-			{Name: "Uptime", Value: fmt.Sprintf("<t:%d:R>", b.StartTime.Unix()), Inline: true},
-			{
-				Name: "Memory (Alloc / Sys)",
-				Value: fmt.Sprintf(
-					"%.2f MB / %.2f MB",
-					float64(m.Alloc)/1024/1024,
-					float64(m.Sys)/1024/1024,
-				),
-				Inline: true,
-			},
-			{Name: "Bot Version", Value: fmt.Sprintf("v%s (%s)", v, sha), Inline: true},
-			{
-				Name:   "Environment",
-				Value:  fmt.Sprintf("Go %s (%s)", runtime.Version(), runtime.GOOS),
-				Inline: true,
-			},
+	monitorsValue := fmt.Sprintf("%d", totalMonitors)
+	if pausedCount > 0 {
+		monitorsValue = fmt.Sprintf("%d (%d paused ⏸️)", totalMonitors, pausedCount)
+	}
+
+	fields := []*discordgo.MessageEmbedField{
+		{Name: "Active Monitors", Value: monitorsValue, Inline: true},
+		{Name: "Torrents Tracked", Value: fmt.Sprintf("%d", torrents), Inline: true},
+		{Name: "Comments Stored", Value: fmt.Sprintf("%d", comments), Inline: true},
+		{Name: "Check Interval", Value: b.Config.Config.Monitor.By, Inline: true},
+		{Name: "Database Size", Value: dbSize, Inline: true},
+		{Name: "Database Status", Value: dbHealth, Inline: true},
+		{Name: "Announcement Queue", Value: fmt.Sprintf("%d pending", pendingQueue), Inline: true},
+		{Name: "Uptime", Value: fmt.Sprintf("<t:%d:R>", b.StartTime.Unix()), Inline: true},
+		{
+			Name: "Memory (Alloc / Sys)",
+			Value: fmt.Sprintf(
+				"%.2f MB / %.2f MB",
+				float64(m.Alloc)/1024/1024,
+				float64(m.Sys)/1024/1024,
+			),
+			Inline: true,
 		},
+		{Name: "Bot Version", Value: fmt.Sprintf("v%s (%s)", v, sha), Inline: true},
+		{
+			Name:   "Environment",
+			Value:  fmt.Sprintf("Go %s (%s)", runtime.Version(), runtime.GOOS),
+			Inline: true,
+		},
+	}
+
+	if pausedCount > 0 {
+		fields = append(fields, &discordgo.MessageEmbedField{
+			Name:   "⏸️ Paused Monitors",
+			Value:  strings.Join(pausedList, ", "),
+			Inline: false,
+		})
+	}
+
+	embed := &discordgo.MessageEmbed{
+		Title:     "📊 Bot Status & Diagnostics",
+		Color:     0x2ecc71,
+		Fields:    fields,
 		Timestamp: time.Now().Format(time.RFC3339),
 	}
 
