@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
@@ -157,9 +158,40 @@ func (b *DiscordBot) handleSlashTest(
 				return
 			}
 
-			firstComment := comments[0]
+			// Find a comment that is a reply (contains a mention e.g. @Username),
+			// or fallback to the last (newest) comment.
+			var targetComment scraper.NyaaComment
+			foundComment := false
+			for _, c := range comments {
+				if nyaaMentionRegex.MatchString(c.Text) {
+					targetComment = c
+					foundComment = true
+					break
+				}
+			}
+			if !foundComment && len(comments) > 0 {
+				targetComment = comments[len(comments)-1]
+			}
+
+			// Resolve parent message in-memory by looking backwards in the comments slice
+			parentMessage := ""
+			matches := nyaaMentionRegex.FindAllStringSubmatch(targetComment.Text, -1)
+			if len(matches) > 0 {
+				mentioned := make(map[string]bool)
+				for _, match := range matches {
+					mentioned[strings.ToLower(match[1])] = true
+				}
+				for j := len(comments) - 1; j >= 0; j-- {
+					prevC := comments[j]
+					if prevC.Pos < targetComment.Pos && mentioned[strings.ToLower(prevC.Username)] {
+						parentMessage = prevC.Text
+						break
+					}
+				}
+			}
+
 			var ts int64
-			parsedTime, err := time.Parse(time.RFC3339, firstComment.Timestamp)
+			parsedTime, err := time.Parse(time.RFC3339, targetComment.Timestamp)
 			if err == nil {
 				ts = parsedTime.Unix()
 			} else {
@@ -172,15 +204,16 @@ func (b *DiscordBot) handleSlashTest(
 				Title:     targetTorrent.Name,
 			}
 			dbComment := db.Comment{
-				Service:   service,
-				TorrentID: torrentIDStr,
-				CommentID: strconv.Itoa(firstComment.ID),
-				Username:  firstComment.Username,
-				Message:   firstComment.Text,
-				Timestamp: ts,
-				Position:  firstComment.Pos,
-				UserRole:  firstComment.Role,
-				AvatarURL: firstComment.Avatar,
+				Service:       service,
+				TorrentID:     torrentIDStr,
+				CommentID:     strconv.Itoa(targetComment.ID),
+				Username:      targetComment.Username,
+				Message:       targetComment.Text,
+				Timestamp:     ts,
+				Position:      targetComment.Pos,
+				UserRole:      targetComment.Role,
+				AvatarURL:     targetComment.Avatar,
+				ParentMessage: parentMessage,
 			}
 
 			err = b.AnnounceNyaaComment(
@@ -287,11 +320,38 @@ func (b *DiscordBot) handleSlashTest(
 
 		if inspect == "comments" {
 			firstComment := matchingComments[0]
-			dbTorrent := db.Torrent{Service: service, TorrentID: firstComment.TorrentID, Title: firstComment.Title}
-			dbComment := db.Comment{Service: service, TorrentID: firstComment.TorrentID, CommentID: firstComment.ID, Username: firstComment.Username, Message: firstComment.Message, Timestamp: firstComment.Timestamp}
+			var parentID, parentMsg, fullTitle, resolvedUsername string
+
+			targetURL := fmt.Sprintf("https://animetosho.org/view/%s", firstComment.TorrentID)
+			httpClient := &http.Client{Timeout: 15 * time.Second}
+			parentID, parentMsg, fullTitle, resolvedUsername = scraper.ResolveParentInfo(httpClient, targetURL, firstComment.ID)
+
+			if resolvedUsername != "" {
+				firstComment.Username = resolvedUsername
+			}
+			titleToUse := firstComment.Title
+			if fullTitle != "" {
+				titleToUse = fullTitle
+			}
+
+			dbTorrent := db.Torrent{
+				Service:   service,
+				TorrentID: firstComment.TorrentID,
+				Title:     titleToUse,
+			}
+			dbComment := db.Comment{
+				Service:       service,
+				TorrentID:     firstComment.TorrentID,
+				CommentID:     firstComment.ID,
+				Username:      firstComment.Username,
+				Message:       firstComment.Message,
+				Timestamp:     firstComment.Timestamp,
+				ParentID:      parentID,
+				ParentMessage: parentMsg,
+			}
 
 			err := b.AnnounceATComment(i.ChannelID, service, dbTorrent, dbComment, "", false, false, false)
-			b.handleTestAnnounceResult(s, i, err, dbComment.Message, firstComment.Title)
+			b.handleTestAnnounceResult(s, i, err, dbComment.Message, titleToUse)
 			return
 		}
 
@@ -468,21 +528,47 @@ func (b *DiscordBot) handleSlashTest(
 		}
 
 		if inspect == "comments" || inspect == "result" {
-			// Show the most recent comment in an embed (using the announcer logic)
-			lastComment := comments[0]
+			// Find a comment that is a reply, or fallback to comments[0]
+			var targetComment scraper.NekoBTComment
+			foundComment := false
+			for _, c := range comments {
+				if c.ReplyingTo != nil && *c.ReplyingTo != "" {
+					targetComment = c
+					foundComment = true
+					break
+				}
+			}
+			if !foundComment && len(comments) > 0 {
+				targetComment = comments[0]
+			}
 
-			dbTorrent := db.Torrent{Service: "nekobt", TorrentID: firstTorrent.ID, Title: firstTorrent.Title, UploadedAt: firstTorrent.UploadedAt / 1000}
+			dbTorrent := db.Torrent{
+				Service:    "nekobt",
+				TorrentID:  firstTorrent.ID,
+				Title:      firstTorrent.Title,
+				UploadedAt: firstTorrent.UploadedAt / 1000,
+			}
 
 			pfpHash := "null"
-			if lastComment.PfpHash != nil && *lastComment.PfpHash != "" {
-				pfpHash = *lastComment.PfpHash
+			if targetComment.PfpHash != nil && *targetComment.PfpHash != "" {
+				pfpHash = *targetComment.PfpHash
 			}
 			avatarURL := fmt.Sprintf("https://nekobt.to/cdn/pfp/%s", pfpHash)
 			parentID := ""
-			if lastComment.ReplyingTo != nil {
-				parentID = *lastComment.ReplyingTo
+			if targetComment.ReplyingTo != nil {
+				parentID = *targetComment.ReplyingTo
 			}
-			dbComment := db.Comment{Service: "nekobt", TorrentID: firstTorrent.ID, CommentID: lastComment.ID, Username: lastComment.DisplayName, Message: lastComment.Text, Timestamp: lastComment.CreatedAt / 1000, AvatarURL: avatarURL, ParentID: parentID, ParentMessage: lastComment.ParentText}
+			dbComment := db.Comment{
+				Service:       "nekobt",
+				TorrentID:     firstTorrent.ID,
+				CommentID:     targetComment.ID,
+				Username:      targetComment.DisplayName,
+				Message:       targetComment.Text,
+				Timestamp:     targetComment.CreatedAt / 1000,
+				AvatarURL:     avatarURL,
+				ParentID:      parentID,
+				ParentMessage: targetComment.ParentText,
+			}
 
 			err := b.AnnounceNekoBTComment(i.ChannelID, dbTorrent, dbComment, "", false, false, false)
 			b.handleTestAnnounceResult(s, i, err, dbComment.Message, firstTorrent.Title)
@@ -524,13 +610,26 @@ func (b *DiscordBot) handleSlashTest(
 				return
 			}
 
-			firstComment := comments[0]
+			// Find a comment that is a reply, or fallback to comments[0]
+			var targetComment scraper.TsukihimeComment
+			foundComment := false
+			for _, c := range comments {
+				if c.GetParentID() != "" {
+					targetComment = c
+					foundComment = true
+					break
+				}
+			}
+			if !foundComment && len(comments) > 0 {
+				targetComment = comments[0]
+			}
+
 			var ts int64
-			if parsedTime, err := time.Parse(time.RFC3339, firstComment.CreatedAt); err == nil {
+			if parsedTime, err := time.Parse(time.RFC3339, targetComment.CreatedAt); err == nil {
 				ts = parsedTime.Unix()
-			} else if parsedTime, err := time.ParseInLocation("2006-01-02T15:04:05", firstComment.CreatedAt, time.UTC); err == nil {
+			} else if parsedTime, err := time.ParseInLocation("2006-01-02T15:04:05", targetComment.CreatedAt, time.UTC); err == nil {
 				ts = parsedTime.Unix()
-			} else if parsedTime, err := time.ParseInLocation(time.DateTime, firstComment.CreatedAt, time.UTC); err == nil {
+			} else if parsedTime, err := time.ParseInLocation(time.DateTime, targetComment.CreatedAt, time.UTC); err == nil {
 				ts = parsedTime.Unix()
 			} else {
 				ts = time.Now().Unix()
@@ -539,10 +638,20 @@ func (b *DiscordBot) handleSlashTest(
 			dbTorrent := db.Torrent{Service: "tsukihime", TorrentID: torrentIDStr, Title: firstTorrent.Name}
 
 			avatarURL := ""
-			if firstComment.Author != nil && firstComment.Author.AvatarHash != "" {
-				avatarURL = fmt.Sprintf("https://tsukihime.org/cdn/pfp/%s", firstComment.Author.AvatarHash)
+			if targetComment.Author != nil && targetComment.Author.AvatarHash != "" {
+				avatarURL = fmt.Sprintf("https://tsukihime.org/cdn/pfp/%s", targetComment.Author.AvatarHash)
 			}
-			dbComment := db.Comment{Service: "tsukihime", TorrentID: torrentIDStr, CommentID: firstComment.GetID(), Username: firstComment.GetDisplayName(), Message: firstComment.GetText(), Timestamp: ts, AvatarURL: avatarURL, ParentID: firstComment.GetParentID(), ParentMessage: firstComment.ParentText}
+			dbComment := db.Comment{
+				Service:       "tsukihime",
+				TorrentID:     torrentIDStr,
+				CommentID:     targetComment.GetID(),
+				Username:      targetComment.GetDisplayName(),
+				Message:       targetComment.GetText(),
+				Timestamp:     ts,
+				AvatarURL:     avatarURL,
+				ParentID:      targetComment.GetParentID(),
+				ParentMessage: targetComment.ParentText,
+			}
 
 			err = b.AnnounceTsukihimeComment(i.ChannelID, dbTorrent, dbComment, "", false, false, false)
 			b.handleTestAnnounceResult(s, i, err, dbComment.Message, firstTorrent.Name)
