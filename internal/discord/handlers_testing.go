@@ -526,8 +526,11 @@ func (b *DiscordBot) handleSlashTest(
 
 			firstComment := comments[0]
 			var ts int64
-			parsedTime, err := time.Parse(time.RFC3339, firstComment.CreatedAt)
-			if err == nil {
+			if parsedTime, err := time.Parse(time.RFC3339, firstComment.CreatedAt); err == nil {
+				ts = parsedTime.Unix()
+			} else if parsedTime, err := time.ParseInLocation("2006-01-02T15:04:05", firstComment.CreatedAt, time.UTC); err == nil {
+				ts = parsedTime.Unix()
+			} else if parsedTime, err := time.ParseInLocation(time.DateTime, firstComment.CreatedAt, time.UTC); err == nil {
 				ts = parsedTime.Unix()
 			} else {
 				ts = time.Now().Unix()
