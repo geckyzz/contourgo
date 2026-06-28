@@ -87,7 +87,11 @@ func (b *DiscordBot) handleDonationManageDelete(
 	})
 
 	if _, ok := b.DB.GetDonator(targetUser.ID); !ok {
-		b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("ℹ️ No donation record found for %s.", targetUser.Username))
+		b.sendFollowupMessage(
+			s,
+			i.Interaction,
+			fmt.Sprintf("ℹ️ No donation record found for %s.", targetUser.Username),
+		)
 		return
 	}
 
@@ -118,7 +122,11 @@ func (b *DiscordBot) handleDonationManageEdit(
 
 	existing, ok := b.DB.GetDonator(targetUser.ID)
 	if !ok {
-		b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("ℹ️ No donation record found for %s.", targetUser.Username))
+		b.sendFollowupMessage(
+			s,
+			i.Interaction,
+			fmt.Sprintf("ℹ️ No donation record found for %s.", targetUser.Username),
+		)
 		return
 	}
 
@@ -164,7 +172,11 @@ func (b *DiscordBot) handleDonationManageDeleteLog(
 	})
 
 	if err := b.DB.DeleteDonationLog(logID); err != nil {
-		b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ Failed to delete log entry #%d: %v", logID, err))
+		b.sendFollowupMessage(
+			s,
+			i.Interaction,
+			fmt.Sprintf("❌ Failed to delete log entry #%d: %v", logID, err),
+		)
 		return
 	}
 
@@ -462,8 +474,16 @@ func (b *DiscordBot) sendDonatorNotificationEmbed(
 		Description: desc,
 		Color:       0xe91e63, // Vibrant Pink
 		Fields: []*discordgo.MessageEmbedField{
-			{Name: "Amount Added", Value: fmt.Sprintf("%.2f %s", amount, b.getCurrency()), Inline: true},
-			{Name: "Cumulative Total", Value: fmt.Sprintf("%.2f %s", totalUSD, b.getCurrency()), Inline: true},
+			{
+				Name:   "Amount Added",
+				Value:  fmt.Sprintf("%.2f %s", amount, b.getCurrency()),
+				Inline: true,
+			},
+			{
+				Name:   "Cumulative Total",
+				Value:  fmt.Sprintf("%.2f %s", totalUSD, b.getCurrency()),
+				Inline: true,
+			},
 			{Name: "Duration Granted", Value: duration, Inline: true},
 			{Name: "Expiry Date", Value: expiryStr, Inline: false},
 		},
