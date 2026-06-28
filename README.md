@@ -342,6 +342,7 @@ If the bot is booted at **`00:05`**:
   - `status <user>` - View a user's active/expired state, remaining duration, and total contributions.
   - `list` - List all active donators, total contribution, and active time-left.
   - `export [user]` - Export raw donation logs in TSV format as a download attachment.
+  - `history <user>` - View donation history logs for a user as an embed.
   - `check` - Force an expiration cycle evaluation immediately.
   - `manage delete <user>` - Delete a donator record and all their logs, and strip all tier roles.
   - `manage edit <user> [total] [expiry]` - Override a donator's cumulative total and/or expiry date, and re-sync roles.

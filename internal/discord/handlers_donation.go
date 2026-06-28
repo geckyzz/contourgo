@@ -45,6 +45,8 @@ func (b *DiscordBot) handleSlashDonation(
 		b.handleDonationList(s, i)
 	case "export":
 		b.handleDonationExport(s, i, subOptionMap)
+	case "history":
+		b.handleDonationHistory(s, i, subOptionMap)
 	case "check":
 		b.handleDonationCheck(s, i)
 	case "manage":
@@ -934,4 +936,71 @@ func (b *DiscordBot) getCurrency() string {
 		return b.Config.Donation.Currency
 	}
 	return "USD"
+}
+
+func (b *DiscordBot) handleDonationHistory(
+	s *discordgo.Session,
+	i *discordgo.InteractionCreate,
+	optionMap map[string]*discordgo.ApplicationCommandInteractionDataOption,
+) {
+	userOpt, ok := optionMap["user"]
+	if !ok {
+		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: "❌ User option is required.",
+				Flags:   discordgo.MessageFlagsEphemeral,
+			},
+		})
+		return
+	}
+	user := userOpt.UserValue(s)
+
+	logs, err := b.DB.GetDonationLogs(user.ID)
+	if err != nil {
+		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: fmt.Sprintf("❌ Failed to query donation logs: %v", err),
+				Flags:   discordgo.MessageFlagsEphemeral,
+			},
+		})
+		return
+	}
+
+	if len(logs) == 0 {
+		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: fmt.Sprintf("ℹ️ No donation logs found for %s.", user.Username),
+			},
+		})
+		return
+	}
+
+	var sb strings.Builder
+	for _, l := range logs {
+		details := ""
+		if l.Account != "" {
+			details += fmt.Sprintf(" via `%s` ", l.Account)
+		}
+		if l.Note != "" {
+			details += fmt.Sprintf(" (%s)", l.Note)
+		}
+		sb.WriteString(fmt.Sprintf("- **%s**: %.2f %s%s (ID: #%d)\n", l.CreatedAt.Format("2006-01-02"), l.Amount, b.getCurrency(), details, l.ID))
+	}
+
+	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Embeds: []*discordgo.MessageEmbed{
+				{
+					Title:       fmt.Sprintf("📋 Donation History: %s", user.Username),
+					Description: sb.String(),
+					Color:       0x00aeef,
+					Timestamp:   time.Now().Format(time.RFC3339),
+				},
+			},
+		},
+	})
 }

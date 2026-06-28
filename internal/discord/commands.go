@@ -299,6 +299,19 @@ func (b *DiscordBot) registerSlashCommands(s *discordgo.Session) {
 				},
 				{
 					Type:        discordgo.ApplicationCommandOptionSubCommand,
+					Name:        "history",
+					Description: "View donation history logs for a user",
+					Options: []*discordgo.ApplicationCommandOption{
+						{
+							Type:        discordgo.ApplicationCommandOptionUser,
+							Name:        "user",
+							Description: "The Discord user to inspect",
+							Required:    true,
+						},
+					},
+				},
+				{
+					Type:        discordgo.ApplicationCommandOptionSubCommand,
 					Name:        "check",
 					Description: "Manually trigger checking for and clearing expired donator roles",
 				},
