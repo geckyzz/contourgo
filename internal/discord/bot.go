@@ -5,6 +5,7 @@ import (
 	"log"
 	"runtime/debug"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -78,17 +79,20 @@ func GetVersionInfo() (string, string) {
 }
 
 type DiscordBot struct {
-	Session         *discordgo.Session
-	Config          *config.Config
-	ConfigPath      string
-	Commands        []*discordgo.ApplicationCommand
-	OwnerID         string
-	AnnounceChannel string
-	DB              *db.DB
-	ForceCheckChan  chan bool
-	StartTime       time.Time
-	stopCh          chan struct{}
-	OnConfigReload  func(*config.Config)
+	Session          *discordgo.Session
+	Config           *config.Config
+	ConfigPath       string
+	Commands         []*discordgo.ApplicationCommand
+	OwnerID          string
+	AnnounceChannel  string
+	DB               *db.DB
+	ForceCheckChan   chan bool
+	ForceMonitorChan chan [2]string // [service, key]
+	StartTime        time.Time
+	stopCh           chan struct{}
+	OnConfigReload   func(*config.Config)
+	pausedMonitors   map[string]map[string]bool
+	pausedMonitorsMu sync.RWMutex
 }
 
 func NewDiscordBot(
@@ -103,20 +107,40 @@ func NewDiscordBot(
 	}
 
 	bot := &DiscordBot{
-		Session:         dg,
-		Config:          cfg,
-		ConfigPath:      configPath,
-		AnnounceChannel: string(cfg.Discord.Announce.Channel),
-		DB:              database,
-		ForceCheckChan:  forceCheckChan,
-		StartTime:       time.Now(),
-		stopCh:          make(chan struct{}),
+		Session:          dg,
+		Config:           cfg,
+		ConfigPath:       configPath,
+		AnnounceChannel:  string(cfg.Discord.Announce.Channel),
+		DB:               database,
+		ForceCheckChan:   forceCheckChan,
+		ForceMonitorChan: make(chan [2]string, 100),
+		StartTime:        time.Now(),
+		stopCh:           make(chan struct{}),
+		pausedMonitors:   make(map[string]map[string]bool),
 	}
 
 	dg.AddHandler(bot.onReady)
 	dg.AddHandler(bot.onInteractionCreate)
 
 	return bot, nil
+}
+
+func (b *DiscordBot) SetMonitorPaused(service, key string, paused bool) {
+	b.pausedMonitorsMu.Lock()
+	defer b.pausedMonitorsMu.Unlock()
+	if b.pausedMonitors[service] == nil {
+		b.pausedMonitors[service] = make(map[string]bool)
+	}
+	b.pausedMonitors[service][key] = paused
+}
+
+func (b *DiscordBot) IsMonitorPaused(service, key string) bool {
+	b.pausedMonitorsMu.RLock()
+	defer b.pausedMonitorsMu.RUnlock()
+	if b.pausedMonitors == nil || b.pausedMonitors[service] == nil {
+		return false
+	}
+	return b.pausedMonitors[service][key]
 }
 
 func (b *DiscordBot) Start() error {

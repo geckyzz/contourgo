@@ -11,15 +11,15 @@ import (
 	"github.com/geckyzz/contourgo/internal/scraper"
 )
 
-func (m *Monitor) checkAnimeToshoOld(force bool) {
-	m.checkAnimeToshoService("animetosho_old", force)
+func (m *Monitor) checkAnimeToshoOld(force bool, targetKey string) {
+	m.checkAnimeToshoService("animetosho_old", force, targetKey)
 }
 
-func (m *Monitor) checkAnimeToshoNew(force bool) {
-	m.checkAnimeToshoService("animetosho_new", force)
+func (m *Monitor) checkAnimeToshoNew(force bool, targetKey string) {
+	m.checkAnimeToshoService("animetosho_new", force, targetKey)
 }
 
-func (m *Monitor) checkAnimeToshoService(service string, force bool) {
+func (m *Monitor) checkAnimeToshoService(service string, force bool, targetKey string) {
 	cfg := m.Config()
 	monitorMap, exists := cfg.Monitors[service]
 	if !exists || len(monitorMap) == 0 {
@@ -39,6 +39,9 @@ func (m *Monitor) checkAnimeToshoService(service string, force bool) {
 	isFeedbackDue := false
 
 	for key, monitorCfg := range monitorMap {
+		if targetKey != "" && key != targetKey {
+			continue
+		}
 		if m.isDue(service, key, monitorCfg, force) {
 			hasDueMonitors = true
 			activeKeys = append(activeKeys, key)

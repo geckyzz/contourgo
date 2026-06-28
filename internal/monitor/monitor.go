@@ -54,6 +54,10 @@ func (m *Monitor) isDue(service, key string, monitorCfg config.MonitorConfig, fo
 		return true
 	}
 
+	if m.bot != nil && m.bot.IsMonitorPaused(service, key) {
+		return false
+	}
+
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -150,6 +154,10 @@ func (m *Monitor) Start() {
 			if count, err := m.bot.CheckAndClearExpiredDonators(); err == nil && count > 0 {
 				log.Printf("[DONATOR] Manual check cleared %d expired donator(s).", count)
 			}
+		case target := <-m.bot.ForceMonitorChan:
+			svc, key := target[0], target[1]
+			log.Printf("[MONITOR] Single force-check triggered for %s/%s", svc, key)
+			m.checkSingle(svc, key)
 		}
 	}
 }
@@ -164,7 +172,7 @@ func (m *Monitor) CheckAll(force bool) {
 	if m.hasActiveMonitorsDue("nyaa", force) {
 		anyChecked = true
 		wg.Go(func() {
-			m.checkNyaa(force)
+			m.checkNyaa(force, "")
 		})
 	}
 
@@ -172,7 +180,7 @@ func (m *Monitor) CheckAll(force bool) {
 	if m.hasActiveMonitorsDue("sukebei", force) {
 		anyChecked = true
 		wg.Go(func() {
-			m.checkSukebei(force)
+			m.checkSukebei(force, "")
 		})
 	}
 
@@ -180,7 +188,7 @@ func (m *Monitor) CheckAll(force bool) {
 	if m.hasActiveMonitorsDue("animetosho_old", force) {
 		anyChecked = true
 		wg.Go(func() {
-			m.checkAnimeToshoOld(force)
+			m.checkAnimeToshoOld(force, "")
 		})
 	}
 
@@ -188,7 +196,7 @@ func (m *Monitor) CheckAll(force bool) {
 	if m.hasActiveMonitorsDue("animetosho_new", force) {
 		anyChecked = true
 		wg.Go(func() {
-			m.checkAnimeToshoNew(force)
+			m.checkAnimeToshoNew(force, "")
 		})
 	}
 
@@ -196,7 +204,7 @@ func (m *Monitor) CheckAll(force bool) {
 	if m.hasActiveMonitorsDue("nekobt", force) {
 		anyChecked = true
 		wg.Go(func() {
-			m.checkNekoBT(force)
+			m.checkNekoBT(force, "")
 		})
 	}
 
@@ -204,7 +212,7 @@ func (m *Monitor) CheckAll(force bool) {
 	if m.hasActiveMonitorsDue("anirena", force) {
 		anyChecked = true
 		wg.Go(func() {
-			m.checkAnirena(force)
+			m.checkAnirena(force, "")
 		})
 	}
 
@@ -212,7 +220,7 @@ func (m *Monitor) CheckAll(force bool) {
 	if m.hasActiveMonitorsDue("tsukihime", force) {
 		anyChecked = true
 		wg.Go(func() {
-			m.checkTsukihime(force)
+			m.checkTsukihime(force, "")
 		})
 	}
 
@@ -220,7 +228,7 @@ func (m *Monitor) CheckAll(force bool) {
 	if m.hasActiveMonitorsDue("twitter", force) {
 		anyChecked = true
 		wg.Go(func() {
-			m.checkTwitter(force)
+			m.checkTwitter(force, "")
 		})
 	}
 
@@ -228,5 +236,28 @@ func (m *Monitor) CheckAll(force bool) {
 
 	if anyChecked {
 		log.Println("All monitor checks completed.")
+	}
+}
+
+func (m *Monitor) checkSingle(service, key string) {
+	switch service {
+	case "nyaa":
+		m.checkNyaa(true, key)
+	case "sukebei":
+		m.checkSukebei(true, key)
+	case "animetosho_old":
+		m.checkAnimeToshoOld(true, key)
+	case "animetosho_new":
+		m.checkAnimeToshoNew(true, key)
+	case "nekobt":
+		m.checkNekoBT(true, key)
+	case "anirena":
+		m.checkAnirena(true, key)
+	case "tsukihime":
+		m.checkTsukihime(true, key)
+	case "twitter":
+		m.checkTwitter(true, key)
+	default:
+		log.Printf("[MONITOR] Unknown service %s for force check", service)
 	}
 }

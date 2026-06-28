@@ -13,7 +13,7 @@ import (
 
 // checkTwitter is the entry point called from CheckAll.
 // It follows the exact same structure as checkNyaa, checkNekoBT, etc.
-func (m *Monitor) checkTwitter(force bool) {
+func (m *Monitor) checkTwitter(force bool, targetKey string) {
 	cfg := m.Config()
 	monitorMap, exists := cfg.Monitors["twitter"]
 	if !exists || len(monitorMap) == 0 {
@@ -23,6 +23,9 @@ func (m *Monitor) checkTwitter(force bool) {
 	scr := scraper.NewTwitterScraper()
 
 	for key, monitorCfg := range monitorMap {
+		if targetKey != "" && key != targetKey {
+			continue
+		}
 		if !m.isDue("twitter", key, monitorCfg, force) {
 			continue
 		}

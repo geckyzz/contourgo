@@ -35,7 +35,71 @@ func (b *DiscordBot) registerSlashCommands(s *discordgo.Session) {
 		},
 		{
 			Name:        "monitors",
-			Description: "List all configured monitors",
+			Description: "Manage and inspect configured monitors",
+			Options: []*discordgo.ApplicationCommandOption{
+				{
+					Type:        discordgo.ApplicationCommandOptionSubCommand,
+					Name:        "list",
+					Description: "List all configured monitors and their status",
+				},
+				{
+					Type:        discordgo.ApplicationCommandOptionSubCommand,
+					Name:        "pause",
+					Description: "Pause a monitor (suppress checks and announcements)",
+					Options: []*discordgo.ApplicationCommandOption{
+						{
+							Type:        discordgo.ApplicationCommandOptionString,
+							Name:        "service",
+							Description: "Service name (e.g. nyaa, nekobt, twitter)",
+							Required:    true,
+						},
+						{
+							Type:        discordgo.ApplicationCommandOptionString,
+							Name:        "key",
+							Description: "Monitor key as defined in config",
+							Required:    true,
+						},
+					},
+				},
+				{
+					Type:        discordgo.ApplicationCommandOptionSubCommand,
+					Name:        "resume",
+					Description: "Resume a previously paused monitor",
+					Options: []*discordgo.ApplicationCommandOption{
+						{
+							Type:        discordgo.ApplicationCommandOptionString,
+							Name:        "service",
+							Description: "Service name (e.g. nyaa, nekobt, twitter)",
+							Required:    true,
+						},
+						{
+							Type:        discordgo.ApplicationCommandOptionString,
+							Name:        "key",
+							Description: "Monitor key as defined in config",
+							Required:    true,
+						},
+					},
+				},
+				{
+					Type:        discordgo.ApplicationCommandOptionSubCommand,
+					Name:        "force",
+					Description: "Force check a specific monitor immediately",
+					Options: []*discordgo.ApplicationCommandOption{
+						{
+							Type:        discordgo.ApplicationCommandOptionString,
+							Name:        "service",
+							Description: "Service name (e.g. nyaa, nekobt, twitter)",
+							Required:    true,
+						},
+						{
+							Type:        discordgo.ApplicationCommandOptionString,
+							Name:        "key",
+							Description: "Monitor key as defined in config",
+							Required:    true,
+						},
+					},
+				},
+			},
 		},
 		{
 			Name:        "import",
@@ -552,8 +616,8 @@ func (b *DiscordBot) onInteractionCreate(s *discordgo.Session, i *discordgo.Inte
 		log.Printf("[Action] Processing reload request")
 		b.handleSlashReload(s, i, optionMap)
 	case "monitors":
-		log.Printf("[Action] Listing configured monitors")
-		b.handleSlashMonitors(s, i)
+		log.Printf("[Action] Processing monitors command")
+		b.handleSlashMonitors(s, i, optionMap)
 	case "import":
 		log.Printf("[Action] Processing data import request")
 		b.handleSlashImport(s, i, optionMap)

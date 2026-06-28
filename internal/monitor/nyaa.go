@@ -13,15 +13,15 @@ import (
 
 var nyaaMentionRegex = regexp.MustCompile(`\B@([a-zA-Z0-9-_]+)`)
 
-func (m *Monitor) checkNyaa(force bool) {
-	m.checkNyaaSukebeiService("nyaa", force)
+func (m *Monitor) checkNyaa(force bool, targetKey string) {
+	m.checkNyaaSukebeiService("nyaa", force, targetKey)
 }
 
-func (m *Monitor) checkSukebei(force bool) {
-	m.checkNyaaSukebeiService("sukebei", force)
+func (m *Monitor) checkSukebei(force bool, targetKey string) {
+	m.checkNyaaSukebeiService("sukebei", force, targetKey)
 }
 
-func (m *Monitor) checkNyaaSukebeiService(service string, force bool) {
+func (m *Monitor) checkNyaaSukebeiService(service string, force bool, targetKey string) {
 	cfg := m.Config()
 	monitorMap, exists := cfg.Monitors[service]
 	if !exists || len(monitorMap) == 0 {
@@ -42,6 +42,9 @@ func (m *Monitor) checkNyaaSukebeiService(service string, force bool) {
 	client := scraper.NewNyaaScraper(proxyURL, service)
 
 	for key, monitorCfg := range monitorMap {
+		if targetKey != "" && key != targetKey {
+			continue
+		}
 		if !m.isDue(service, key, monitorCfg, force) {
 			continue
 		}

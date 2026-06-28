@@ -26,7 +26,7 @@ type TsukihimeTorrentCache struct {
 	Torrents    map[string]scraper.TsukihimeTorrent `json:"torrents"`
 }
 
-func (m *Monitor) checkTsukihime(force bool) {
+func (m *Monitor) checkTsukihime(force bool, targetKey string) {
 	cfg := m.Config()
 	monitorMap, exists := cfg.Monitors["tsukihime"]
 	if !exists || len(monitorMap) == 0 {
@@ -35,6 +35,9 @@ func (m *Monitor) checkTsukihime(force bool) {
 
 	hasDueMonitors := false
 	for key, monitorCfg := range monitorMap {
+		if targetKey != "" && key != targetKey {
+			continue
+		}
 		if m.isDue("tsukihime", key, monitorCfg, force) {
 			hasDueMonitors = true
 			break
@@ -48,6 +51,9 @@ func (m *Monitor) checkTsukihime(force bool) {
 	scr := scraper.NewTsukihimeScraper()
 
 	for key, monitorCfg := range monitorMap {
+		if targetKey != "" && key != targetKey {
+			continue
+		}
 		if m.isDue("tsukihime", key, monitorCfg, force) {
 			m.updateLastCheck("tsukihime", key)
 		}
@@ -98,7 +104,7 @@ func (m *Monitor) checkTsukihime(force bool) {
 	}
 
 	// Sync Cache using direct group and anime lookup
-	newTorrents := m.syncTsukihimeCache(monitorMap, scr, &cache)
+	newTorrents := m.syncTsukihimeCache(monitorMap, scr, &cache, targetKey)
 
 	maxID := cache.LastKnownID
 	for _, t := range newTorrents {
@@ -109,6 +115,9 @@ func (m *Monitor) checkTsukihime(force bool) {
 		// Match against non-feedback monitors
 		matched := false
 		for mKey, monitorCfg := range monitorMap {
+			if targetKey != "" && mKey != targetKey {
+				continue
+			}
 			if mKey == "feedback" {
 				continue
 			}
@@ -183,6 +192,9 @@ func (m *Monitor) checkTsukihime(force bool) {
 		commentID := c.GetID()
 
 		for key, monitorCfg := range monitorMap {
+			if targetKey != "" && key != targetKey {
+				continue
+			}
 			isFeedbackMonitor := key == "feedback"
 			if isFeedbackComment != isFeedbackMonitor {
 				continue
@@ -352,6 +364,7 @@ func (m *Monitor) syncTsukihimeCache(
 	monitorMap map[string]config.MonitorConfig,
 	scr *scraper.TsukihimeScraper,
 	cache *TsukihimeTorrentCache,
+	targetKey string,
 ) []scraper.TsukihimeTorrent {
 	var newTorrents []scraper.TsukihimeTorrent
 	maxPages := 1000 // effectively infinite page limit for initial catalog fetch
@@ -375,6 +388,9 @@ func (m *Monitor) syncTsukihimeCache(
 	isFirstInit := len(cache.Torrents) == 0
 
 	for mKey, monitorCfg := range monitorMap {
+		if targetKey != "" && mKey != targetKey {
+			continue
+		}
 		if mKey == "feedback" {
 			continue
 		}

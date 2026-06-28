@@ -8,7 +8,7 @@ import (
 	"github.com/geckyzz/contourgo/internal/scraper"
 )
 
-func (m *Monitor) checkAnirena(force bool) {
+func (m *Monitor) checkAnirena(force bool, targetKey string) {
 	cfg := m.Config()
 	monitorMap, exists := cfg.Monitors["anirena"]
 	if !exists || len(monitorMap) == 0 {
@@ -17,6 +17,9 @@ func (m *Monitor) checkAnirena(force bool) {
 
 	hasDueMonitors := false
 	for key, monitorCfg := range monitorMap {
+		if targetKey != "" && key != targetKey {
+			continue
+		}
 		if m.isDue("anirena", key, monitorCfg, force) {
 			hasDueMonitors = true
 			break
@@ -37,6 +40,9 @@ func (m *Monitor) checkAnirena(force bool) {
 	client := scraper.NewAnirenaScraper(apiKey)
 
 	for key, monitorCfg := range monitorMap {
+		if targetKey != "" && key != targetKey {
+			continue
+		}
 		if !m.isDue("anirena", key, monitorCfg, force) {
 			continue
 		}

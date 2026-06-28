@@ -325,7 +325,11 @@ If the bot is booted at **`00:05`**:
 ## 💬 Slash Commands
 
 - `/status` - Displays bot health, active monitors, system/memory diagnostics, and DB stats.
-- `/monitors` - Lists all currently active monitor definitions.
+- `/monitors` - Manage and inspect configured monitors:
+  - `list` - Lists all configured monitors, showing status (🟢 active or ⏸️ paused) and filters.
+  - `pause <service> <key>` - Pauses a specific monitor (skips checks and suppresses announcements).
+  - `resume <service> <key>` - Resumes a paused monitor.
+  - `force <service> <key>` - Force check a specific monitor immediately.
 - `/reload` - Reloads the configuration file (hot-reload `config.toml`) or triggers a manual monitor
   check cycle. Options: `target` (`monitors` or `config`).
 - `/ping` - Checks bot heartbeat latency.

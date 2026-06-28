@@ -165,7 +165,44 @@ func (b *DiscordBot) handleSlashLatest(
 	}
 }
 
-func (b *DiscordBot) handleSlashMonitors(s *discordgo.Session, i *discordgo.InteractionCreate) {
+func (b *DiscordBot) handleSlashMonitors(
+	s *discordgo.Session,
+	i *discordgo.InteractionCreate,
+	optionMap map[string]*discordgo.ApplicationCommandInteractionDataOption,
+) {
+	options := i.ApplicationCommandData().Options
+	if len(options) == 0 {
+		b.handleMonitorList(s, i)
+		return
+	}
+
+	subCmd := options[0]
+	subOptionMap := make(map[string]*discordgo.ApplicationCommandInteractionDataOption)
+	for _, opt := range subCmd.Options {
+		subOptionMap[opt.Name] = opt
+	}
+
+	switch subCmd.Name {
+	case "list":
+		b.handleMonitorList(s, i)
+	case "pause":
+		b.handleMonitorPauseResume(s, i, subOptionMap, true)
+	case "resume":
+		b.handleMonitorPauseResume(s, i, subOptionMap, false)
+	case "force":
+		b.handleMonitorForce(s, i, subOptionMap)
+	default:
+		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: "❌ Unknown subcommand.",
+				Flags:   discordgo.MessageFlagsEphemeral,
+			},
+		})
+	}
+}
+
+func (b *DiscordBot) handleMonitorList(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	var sb strings.Builder
 	for svc, monitors := range b.Config.Monitors {
 		sb.WriteString(fmt.Sprintf("📂 **%s**\n", strings.ToUpper(svc)))
@@ -185,7 +222,13 @@ func (b *DiscordBot) handleSlashMonitors(s *discordgo.Session, i *discordgo.Inte
 			if filterStr == "" {
 				filterStr = "Global"
 			}
-			sb.WriteString(fmt.Sprintf("- `%s`: %s\n", key, filterStr))
+
+			statusEmoji := "🟢"
+			if b.IsMonitorPaused(svc, key) {
+				statusEmoji = "⏸️"
+			}
+
+			sb.WriteString(fmt.Sprintf("- %s `%s`: %s\n", statusEmoji, key, filterStr))
 		}
 		sb.WriteString("\n")
 	}
@@ -207,4 +250,157 @@ func (b *DiscordBot) handleSlashMonitors(s *discordgo.Session, i *discordgo.Inte
 			},
 		},
 	})
+}
+
+func (b *DiscordBot) handleMonitorPauseResume(
+	s *discordgo.Session,
+	i *discordgo.InteractionCreate,
+	optionMap map[string]*discordgo.ApplicationCommandInteractionDataOption,
+	paused bool,
+) {
+	svcOpt, okSvc := optionMap["service"]
+	keyOpt, okKey := optionMap["key"]
+	if !okSvc || !okKey {
+		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: "❌ Both service and key options are required.",
+				Flags:   discordgo.MessageFlagsEphemeral,
+			},
+		})
+		return
+	}
+
+	svc := strings.ToLower(svcOpt.StringValue())
+	key := strings.ToLower(keyOpt.StringValue())
+
+	// Validate service and key
+	inner, ok := b.Config.Monitors[svc]
+	if !ok {
+		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: fmt.Sprintf("❌ Service `%s` not found in config.", svc),
+				Flags:   discordgo.MessageFlagsEphemeral,
+			},
+		})
+		return
+	}
+
+	// We look up monitor case-insensitively or exactly. Since monitorMap has exact keys, let's look up exactly or lowercase.
+	var matchedKey string
+	for k := range inner {
+		if strings.ToLower(k) == key {
+			matchedKey = k
+			break
+		}
+	}
+
+	if matchedKey == "" {
+		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: fmt.Sprintf("❌ Monitor key `%s` not found under service `%s`.", key, svc),
+				Flags:   discordgo.MessageFlagsEphemeral,
+			},
+		})
+		return
+	}
+
+	b.SetMonitorPaused(svc, matchedKey, paused)
+
+	action := "paused"
+	statusEmoji := "⏸️"
+	if !paused {
+		action = "resumed"
+		statusEmoji = "▶️"
+	}
+
+	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{
+			Content: fmt.Sprintf(
+				"%s Monitor **%s/%s** has been %s.",
+				statusEmoji,
+				svc,
+				matchedKey,
+				action,
+			),
+		},
+	})
+}
+
+func (b *DiscordBot) handleMonitorForce(
+	s *discordgo.Session,
+	i *discordgo.InteractionCreate,
+	optionMap map[string]*discordgo.ApplicationCommandInteractionDataOption,
+) {
+	svcOpt, okSvc := optionMap["service"]
+	keyOpt, okKey := optionMap["key"]
+	if !okSvc || !okKey {
+		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: "❌ Both service and key options are required.",
+				Flags:   discordgo.MessageFlagsEphemeral,
+			},
+		})
+		return
+	}
+
+	svc := strings.ToLower(svcOpt.StringValue())
+	key := strings.ToLower(keyOpt.StringValue())
+
+	inner, ok := b.Config.Monitors[svc]
+	if !ok {
+		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: fmt.Sprintf("❌ Service `%s` not found in config.", svc),
+				Flags:   discordgo.MessageFlagsEphemeral,
+			},
+		})
+		return
+	}
+
+	var matchedKey string
+	for k := range inner {
+		if strings.ToLower(k) == key {
+			matchedKey = k
+			break
+		}
+	}
+
+	if matchedKey == "" {
+		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: fmt.Sprintf("❌ Monitor key `%s` not found under service `%s`.", key, svc),
+				Flags:   discordgo.MessageFlagsEphemeral,
+			},
+		})
+		return
+	}
+
+	select {
+	case b.ForceMonitorChan <- [2]string{svc, matchedKey}:
+		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: fmt.Sprintf(
+					"🔄 Triggered immediate force-check for monitor **%s/%s**.",
+					svc,
+					matchedKey,
+				),
+			},
+		})
+	default:
+		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: "⚠️ Force-check queue is full. Please try again later.",
+				Flags:   discordgo.MessageFlagsEphemeral,
+			},
+		})
+	}
 }

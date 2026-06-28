@@ -9,7 +9,7 @@ import (
 	"github.com/geckyzz/contourgo/internal/scraper"
 )
 
-func (m *Monitor) checkNekoBT(force bool) {
+func (m *Monitor) checkNekoBT(force bool, targetKey string) {
 	cfg := m.Config()
 	monitorMap, exists := cfg.Monitors["nekobt"]
 	if !exists || len(monitorMap) == 0 {
@@ -18,6 +18,9 @@ func (m *Monitor) checkNekoBT(force bool) {
 
 	hasDueMonitors := false
 	for key, monitorCfg := range monitorMap {
+		if targetKey != "" && key != targetKey {
+			continue
+		}
 		if m.isDue("nekobt", key, monitorCfg, force) {
 			hasDueMonitors = true
 			break
@@ -32,6 +35,9 @@ func (m *Monitor) checkNekoBT(force bool) {
 	scr := scraper.NewNekoBTScraper(apiKey)
 
 	for key, monitorCfg := range monitorMap {
+		if targetKey != "" && key != targetKey {
+			continue
+		}
 		if !m.isDue("nekobt", key, monitorCfg, force) {
 			continue
 		}
