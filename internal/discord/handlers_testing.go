@@ -161,34 +161,21 @@ func (b *DiscordBot) handleSlashTest(
 			// Find a comment that is a reply (contains a mention e.g. @Username),
 			// or fallback to the last (newest) comment.
 			var targetComment scraper.NyaaComment
-			foundComment := false
-			for _, c := range comments {
+			targetIndex := -1
+			for idx, c := range comments {
 				if nyaaMentionRegex.MatchString(c.Text) {
 					targetComment = c
-					foundComment = true
+					targetIndex = idx
 					break
 				}
 			}
-			if !foundComment && len(comments) > 0 {
-				targetComment = comments[len(comments)-1]
+			if targetIndex == -1 && len(comments) > 0 {
+				targetIndex = len(comments) - 1
+				targetComment = comments[targetIndex]
 			}
 
-			// Resolve parent message in-memory by looking backwards in the comments slice
-			parentMessage := ""
-			matches := nyaaMentionRegex.FindAllStringSubmatch(targetComment.Text, -1)
-			if len(matches) > 0 {
-				mentioned := make(map[string]bool)
-				for _, match := range matches {
-					mentioned[strings.ToLower(match[1])] = true
-				}
-				for j := len(comments) - 1; j >= 0; j-- {
-					prevC := comments[j]
-					if prevC.Pos < targetComment.Pos && mentioned[strings.ToLower(prevC.Username)] {
-						parentMessage = prevC.Text
-						break
-					}
-				}
-			}
+			// Resolve parent message using the shared helper
+			_, parentMessage := scraper.ResolveNyaaParent(comments, targetIndex, targetComment.Text)
 
 			var ts int64
 			parsedTime, err := time.Parse(time.RFC3339, targetComment.Timestamp)

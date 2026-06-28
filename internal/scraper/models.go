@@ -438,3 +438,27 @@ func ParseNekoBTNotificationText(text string) string {
 
 	return text
 }
+
+var NyaaMentionRegex = regexp.MustCompile(`\B@([a-zA-Z0-9-_]+)`)
+
+func ResolveNyaaParent(
+	comments []NyaaComment,
+	targetIndex int,
+	targetText string,
+) (string, string) {
+	matches := NyaaMentionRegex.FindAllStringSubmatch(targetText, -1)
+	if len(matches) == 0 {
+		return "", ""
+	}
+	mentioned := make(map[string]bool)
+	for _, match := range matches {
+		mentioned[strings.ToLower(match[1])] = true
+	}
+	for j := targetIndex - 1; j >= 0; j-- {
+		prevC := comments[j]
+		if mentioned[strings.ToLower(prevC.Username)] {
+			return strconv.Itoa(prevC.ID), prevC.Text
+		}
+	}
+	return "", ""
+}
