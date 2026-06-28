@@ -754,3 +754,23 @@ func (db *DB) GetDonationLogs(userID string) ([]DonationLog, error) {
 	}
 	return logs, nil
 }
+
+// DeleteDonator removes a donator record and all their donation logs.
+func (db *DB) DeleteDonator(userID string) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	_, err := db.Conn.Exec(`DELETE FROM donators WHERE user_id = ?`, userID)
+	if err != nil {
+		return err
+	}
+	_, err = db.Conn.Exec(`DELETE FROM donation_logs WHERE user_id = ?`, userID)
+	return err
+}
+
+// DeleteDonationLog removes a single donation log entry by ID.
+func (db *DB) DeleteDonationLog(logID int) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	_, err := db.Conn.Exec(`DELETE FROM donation_logs WHERE id = ?`, logID)
+	return err
+}

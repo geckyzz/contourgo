@@ -47,6 +47,24 @@ func (b *DiscordBot) handleSlashDonation(
 		b.handleDonationExport(s, i, subOptionMap)
 	case "check":
 		b.handleDonationCheck(s, i)
+	case "manage":
+		// SubCommandGroup: dispatch inner subcommand
+		if len(subCmd.Options) == 0 {
+			break
+		}
+		inner := subCmd.Options[0]
+		innerOptionMap := make(map[string]*discordgo.ApplicationCommandInteractionDataOption)
+		for _, opt := range inner.Options {
+			innerOptionMap[opt.Name] = opt
+		}
+		switch inner.Name {
+		case "delete":
+			b.handleDonationManageDelete(s, i, innerOptionMap)
+		case "edit":
+			b.handleDonationManageEdit(s, i, innerOptionMap)
+		case "delete_log":
+			b.handleDonationManageDeleteLog(s, i, innerOptionMap)
+		}
 	default:
 		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -56,6 +74,101 @@ func (b *DiscordBot) handleSlashDonation(
 			},
 		})
 	}
+}
+
+func (b *DiscordBot) handleDonationManageDelete(
+	s *discordgo.Session,
+	i *discordgo.InteractionCreate,
+	optionMap map[string]*discordgo.ApplicationCommandInteractionDataOption,
+) {
+	targetUser := optionMap["user"].UserValue(s)
+	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+	})
+
+	if _, ok := b.DB.GetDonator(targetUser.ID); !ok {
+		b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("ℹ️ No donation record found for %s.", targetUser.Username))
+		return
+	}
+
+	// Strip all tier roles before deleting
+	serverID := string(b.Config.Discord.Server)
+	b.syncUserDonatorRoles(s, serverID, targetUser.ID, 0, 0)
+
+	if err := b.DB.DeleteDonator(targetUser.ID); err != nil {
+		b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ Failed to delete record: %v", err))
+		return
+	}
+
+	b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf(
+		"✅ Deleted all donation records and logs for **%s** (`%s`) and stripped their roles.",
+		targetUser.Username, targetUser.ID,
+	))
+}
+
+func (b *DiscordBot) handleDonationManageEdit(
+	s *discordgo.Session,
+	i *discordgo.InteractionCreate,
+	optionMap map[string]*discordgo.ApplicationCommandInteractionDataOption,
+) {
+	targetUser := optionMap["user"].UserValue(s)
+	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+	})
+
+	existing, ok := b.DB.GetDonator(targetUser.ID)
+	if !ok {
+		b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("ℹ️ No donation record found for %s.", targetUser.Username))
+		return
+	}
+
+	newTotal := existing.TotalUSD
+	if opt, ok := optionMap["total"]; ok {
+		newTotal = opt.FloatValue()
+	}
+
+	newExpiry := existing.ExpiryTime
+	if opt, ok := optionMap["expiry"]; ok {
+		t, err := parseCustomEndDate(opt.StringValue())
+		if err != nil {
+			b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ Date error: %v", err))
+			return
+		}
+		newExpiry = t.Unix()
+	}
+
+	if err := b.DB.UpdateDonator(targetUser.ID, targetUser.Username, newTotal, newExpiry); err != nil {
+		b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ Failed to update record: %v", err))
+		return
+	}
+
+	// Re-sync roles with updated values
+	serverID := string(b.Config.Discord.Server)
+	b.syncUserDonatorRoles(s, serverID, targetUser.ID, newTotal, newExpiry)
+
+	expiryStr := time.Unix(newExpiry, 0).Format("January 2, 2006 at 3:04 PM MST")
+	b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf(
+		"✅ Updated **%s** (`%s`):\n- Total: **%.2f %s**\n- Expiry: **%s**",
+		targetUser.Username, targetUser.ID, newTotal, b.getCurrency(), expiryStr,
+	))
+}
+
+func (b *DiscordBot) handleDonationManageDeleteLog(
+	s *discordgo.Session,
+	i *discordgo.InteractionCreate,
+	optionMap map[string]*discordgo.ApplicationCommandInteractionDataOption,
+) {
+	logID := int(optionMap["log_id"].IntValue())
+	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+	})
+
+	if err := b.DB.DeleteDonationLog(logID); err != nil {
+		b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("❌ Failed to delete log entry #%d: %v", logID, err))
+		return
+	}
+
+	b.sendFollowupMessage(s, i.Interaction, fmt.Sprintf("✅ Deleted donation log entry #%d.", logID))
 }
 
 func parseCustomEndDate(dateStr string) (time.Time, error) {

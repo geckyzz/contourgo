@@ -323,9 +323,12 @@ If the bot is booted at **`00:05`**:
 - `/donation` - Manage server donation logs and roles:
   - `add <user> <amount> [account] [note] [end_date] [silent]` - Log a donation, add stacked duration (multiplier $9.99), sync multi-tier roles, and send DM (silence-able).
   - `status <user>` - View a user's active/expired state, remaining duration, and total contributions.
-  - `list` - List all active donators, total USD contribution, and active time-left.
+  - `list` - List all active donators, total contribution, and active time-left.
   - `export [user]` - Export raw donation logs in TSV format as a download attachment.
   - `check` - Force an expiration cycle evaluation immediately.
+  - `manage delete <user>` - Delete a donator record and all their logs, and strip all tier roles.
+  - `manage edit <user> [total] [expiry]` - Override a donator's cumulative total and/or expiry date, and re-sync roles.
+  - `manage delete_log <log_id>` - Delete a single donation log entry by its numeric ID (use `export` to find IDs).
 - `/help` - Interactive, linked command menu.
 
 ---

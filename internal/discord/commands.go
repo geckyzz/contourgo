@@ -237,6 +237,64 @@ func (b *DiscordBot) registerSlashCommands(s *discordgo.Session) {
 					Name:        "check",
 					Description: "Manually trigger checking for and clearing expired donator roles",
 				},
+				{
+					Type:        discordgo.ApplicationCommandOptionSubCommandGroup,
+					Name:        "manage",
+					Description: "Manage existing donation records",
+					Options: []*discordgo.ApplicationCommandOption{
+						{
+							Type:        discordgo.ApplicationCommandOptionSubCommand,
+							Name:        "delete",
+							Description: "Delete a donator record and all their logs (strips roles)",
+							Options: []*discordgo.ApplicationCommandOption{
+								{
+									Type:        discordgo.ApplicationCommandOptionUser,
+									Name:        "user",
+									Description: "The Discord user to delete",
+									Required:    true,
+								},
+							},
+						},
+						{
+							Type:        discordgo.ApplicationCommandOptionSubCommand,
+							Name:        "edit",
+							Description: "Edit a donator's total amount and/or expiry date",
+							Options: []*discordgo.ApplicationCommandOption{
+								{
+									Type:        discordgo.ApplicationCommandOptionUser,
+									Name:        "user",
+									Description: "The Discord user to edit",
+									Required:    true,
+								},
+								{
+									Type:        discordgo.ApplicationCommandOptionNumber,
+									Name:        "total",
+									Description: "Override the cumulative total amount",
+									Required:    false,
+								},
+								{
+									Type:        discordgo.ApplicationCommandOptionString,
+									Name:        "expiry",
+									Description: "Override the expiry date (YYYY-MM-DD or 'July 17')",
+									Required:    false,
+								},
+							},
+						},
+						{
+							Type:        discordgo.ApplicationCommandOptionSubCommand,
+							Name:        "delete_log",
+							Description: "Delete a single donation log entry by its numeric ID",
+							Options: []*discordgo.ApplicationCommandOption{
+								{
+									Type:        discordgo.ApplicationCommandOptionInteger,
+									Name:        "log_id",
+									Description: "The numeric ID of the donation log to delete",
+									Required:    true,
+								},
+							},
+						},
+					},
+				},
 			},
 		},
 	}
