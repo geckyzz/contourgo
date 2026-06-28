@@ -597,7 +597,17 @@ func (b *DiscordBot) onInteractionCreate(s *discordgo.Session, i *discordgo.Inte
 		strings.Join(params, ", "),
 	)
 
-	if !b.hasInteractionAccess(i) {
+	requiresPermission := true
+	if cmdName == "help" || cmdName == "ping" || cmdName == "status" {
+		requiresPermission = false
+	} else if cmdName == "monitors" {
+		options := i.ApplicationCommandData().Options
+		if len(options) > 0 && options[0].Name == "list" {
+			requiresPermission = false
+		}
+	}
+
+	if requiresPermission && !b.hasInteractionAccess(i) {
 		log.Printf(
 			"[Action] Permission denied for user %s (%s) attempting command /%s",
 			userName,
