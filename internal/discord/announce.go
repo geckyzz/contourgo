@@ -67,6 +67,19 @@ func trimDescription(s string) string {
 	return s
 }
 
+func appendReplyingToField(embed *discordgo.MessageEmbed, parentText string) {
+	if parentText == "" {
+		return
+	}
+	if len(parentText) > 1000 {
+		parentText = parentText[:997] + "..."
+	}
+	embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
+		Name:  "↪️ Replying to",
+		Value: parentText,
+	})
+}
+
 func (b *DiscordBot) setEmbedTimestamp(embed *discordgo.MessageEmbed, timestamp int64) {
 	if timestamp > 0 {
 		embed.Timestamp = time.Unix(timestamp, 0).UTC().Format(time.RFC3339)
@@ -188,16 +201,7 @@ func (b *DiscordBot) BuildNyaaEmbed(
 		}
 	}
 
-	if parentText != "" {
-		pText := parentText
-		if len(pText) > 1000 {
-			pText = pText[:997] + "..."
-		}
-		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
-			Name:  "↪️ Replying to",
-			Value: pText,
-		})
-	}
+	appendReplyingToField(embed, parentText)
 
 	b.setEmbedThumbnail(embed, userAvatarURL, "")
 	b.setEmbedTimestamp(embed, comment.Timestamp)
@@ -307,15 +311,8 @@ func (b *DiscordBot) BuildATEmbed(
 		}
 	}
 
-	if comment.ParentID != "" && comment.ParentMessage != "" {
-		pText := comment.ParentMessage
-		if len(pText) > 1000 {
-			pText = pText[:997] + "..."
-		}
-		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
-			Name:  "↪️ Replying to",
-			Value: pText,
-		})
+	if comment.ParentID != "" {
+		appendReplyingToField(embed, comment.ParentMessage)
 	}
 
 	if resolveUserContentImage {
@@ -399,15 +396,8 @@ func (b *DiscordBot) BuildNekoBTEmbed(
 		})
 	}
 
-	if comment.ParentID != "" && parentText != "" {
-		pText := resolveNekoBTMentions(parentText)
-		if len(pText) > 1000 {
-			pText = pText[:997] + "..."
-		}
-		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
-			Name:  "↪️ Replying to",
-			Value: pText,
-		})
+	if comment.ParentID != "" {
+		appendReplyingToField(embed, resolveNekoBTMentions(parentText))
 	}
 
 	if resolveUserContentImage {
@@ -508,14 +498,8 @@ func (b *DiscordBot) BuildTsukihimeEmbed(
 	b.setEmbedTimestamp(embed, comment.Timestamp)
 	b.setEmbedThumbnail(embed, comment.AvatarURL, "default.png")
 
-	if comment.ParentID != "" && parentText != "" {
-		if len(parentText) > 1000 {
-			parentText = parentText[:997] + "..."
-		}
-		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
-			Name:  "↪️ Replying to",
-			Value: parentText,
-		})
+	if comment.ParentID != "" {
+		appendReplyingToField(embed, parentText)
 	}
 
 	return embed
