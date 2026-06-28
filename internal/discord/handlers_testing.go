@@ -611,16 +611,7 @@ func (b *DiscordBot) handleSlashTest(
 				targetComment = comments[0]
 			}
 
-			var ts int64
-			if parsedTime, err := time.Parse(time.RFC3339, targetComment.CreatedAt); err == nil {
-				ts = parsedTime.Unix()
-			} else if parsedTime, err := time.ParseInLocation("2006-01-02T15:04:05", targetComment.CreatedAt, time.UTC); err == nil {
-				ts = parsedTime.Unix()
-			} else if parsedTime, err := time.ParseInLocation(time.DateTime, targetComment.CreatedAt, time.UTC); err == nil {
-				ts = parsedTime.Unix()
-			} else {
-				ts = time.Now().Unix()
-			}
+			ts := targetComment.GetTimestamp()
 
 			dbTorrent := db.Torrent{Service: "tsukihime", TorrentID: torrentIDStr, Title: firstTorrent.Name}
 

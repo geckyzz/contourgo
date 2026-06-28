@@ -243,17 +243,7 @@ func (m *Monitor) checkTsukihime(force bool, targetKey string) {
 					continue
 				}
 
-				var ts int64
-				if pt, err := time.Parse(time.RFC3339, c.CreatedAt); err == nil {
-					ts = pt.Unix()
-				} else if pt, err := time.ParseInLocation("2006-01-02T15:04:05", c.CreatedAt, time.UTC); err == nil {
-					ts = pt.Unix()
-				} else if pt, err := time.ParseInLocation(time.DateTime, c.CreatedAt, time.UTC); err == nil {
-					// API returns timestamps without timezone suffix (e.g. "2026-06-19T10:20:53")
-					ts = pt.Unix()
-				} else {
-					ts = time.Now().Unix()
-				}
+				ts := c.GetTimestamp()
 				avatarURL := ""
 				if c.Author != nil && c.Author.AvatarHash != "" {
 					avatarURL = fmt.Sprintf("https://tsukihime.org/cdn/pfp/%s", c.Author.AvatarHash)
@@ -321,17 +311,7 @@ func (m *Monitor) checkTsukihime(force bool, targetKey string) {
 					continue
 				}
 
-				var ts int64
-				if pt, err := time.Parse(time.RFC3339, c.CreatedAt); err == nil {
-					ts = pt.Unix()
-				} else if pt, err := time.ParseInLocation("2006-01-02T15:04:05", c.CreatedAt, time.UTC); err == nil {
-					ts = pt.Unix()
-				} else if pt, err := time.ParseInLocation(time.DateTime, c.CreatedAt, time.UTC); err == nil {
-					// API returns timestamps without timezone suffix (e.g. "2026-06-19T10:20:53")
-					ts = pt.Unix()
-				} else {
-					ts = time.Now().Unix()
-				}
+				ts := c.GetTimestamp()
 				avatarURL := ""
 				if c.Author != nil && c.Author.AvatarHash != "" {
 					avatarURL = fmt.Sprintf("https://tsukihime.org/cdn/pfp/%s", c.Author.AvatarHash)

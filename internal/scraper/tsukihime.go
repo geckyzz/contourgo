@@ -115,6 +115,17 @@ func (c *TsukihimeComment) GetText() string {
 	return c.Content
 }
 
+func (c *TsukihimeComment) GetTimestamp() int64 {
+	if parsedTime, err := time.Parse(time.RFC3339, c.CreatedAt); err == nil {
+		return parsedTime.Unix()
+	} else if parsedTime, err := time.ParseInLocation("2006-01-02T15:04:05", c.CreatedAt, time.UTC); err == nil {
+		return parsedTime.Unix()
+	} else if parsedTime, err := time.ParseInLocation(time.DateTime, c.CreatedAt, time.UTC); err == nil {
+		return parsedTime.Unix()
+	}
+	return time.Now().Unix()
+}
+
 type TsukihimeResponse struct {
 	Total    int                `json:"total"`
 	Start    int                `json:"start"`
