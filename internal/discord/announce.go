@@ -794,13 +794,5 @@ func (b *DiscordBot) BuildNekoBTNotificationEmbed(
 
 	b.setEmbedTimestamp(embed, comment.Timestamp)
 
-	if comment.CommentID != "" {
-		embed.Fields = append(embed.Fields, &discordgo.MessageEmbedField{
-			Name:   "Notification ID",
-			Value:  fmt.Sprintf("`%s`", comment.CommentID),
-			Inline: true,
-		})
-	}
-
 	return embed
 }

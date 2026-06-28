@@ -201,10 +201,13 @@ discord.embed.author.url = "https://i.imgur.com/some-nekobt-image.png"
 # NekoBT notification monitors live under [monitor.nekobt.notification]
 # or [monitor.nekobt.notifications] and support:
 #   discord.channel - Private channel to route notifications to (recommended to avoid PII)
+#   custom_format   - Go template string content override (optional). Useful for pinging users/roles.
+#                     Supported keys: {{.Message}}
 #   (note: uses config.nekobt.api.key for authentication)
 #
 [monitor.nekobt.notification]
 discord.channel = "1234567890" # Route to private channel to avoid PII leakage
+custom_format = "<@1234567890> — {{.Message}}" # Example ping format
 
 
 # ─── AniRena ──────────────────────────────────────────────────────────────────

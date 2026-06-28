@@ -987,7 +987,16 @@ func (b *DiscordBot) handleDonationHistory(
 		if l.Note != "" {
 			details += fmt.Sprintf(" (%s)", l.Note)
 		}
-		sb.WriteString(fmt.Sprintf("- **%s**: %.2f %s%s (ID: #%d)\n", l.CreatedAt.Format("2006-01-02"), l.Amount, b.getCurrency(), details, l.ID))
+		sb.WriteString(
+			fmt.Sprintf(
+				"- **%s**: %.2f %s%s (ID: #%d)\n",
+				l.CreatedAt.Format("2006-01-02"),
+				l.Amount,
+				b.getCurrency(),
+				details,
+				l.ID,
+			),
+		)
 	}
 
 	s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{

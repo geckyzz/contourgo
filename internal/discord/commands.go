@@ -804,6 +804,8 @@ func (b *DiscordBot) handleInteractionComponent(
 		err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseUpdateMessage,
 			Data: &discordgo.InteractionResponseData{
+				Content:    i.Message.Content,
+				Embeds:     i.Message.Embeds,
 				Components: components,
 			},
 		})

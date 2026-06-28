@@ -1,14 +1,29 @@
 package discord
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/geckyzz/contourgo/internal/config"
 	"github.com/geckyzz/contourgo/internal/db"
 )
+
+func renderNekoBTNotificationFormat(format string, data any) (string, error) {
+	tmpl, err := template.New("nekobt_notification").Parse(format)
+	if err != nil {
+		return "", fmt.Errorf("invalid template: %w", err)
+	}
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return "", fmt.Errorf("error executing template: %w", err)
+	}
+	return buf.String(), nil
+}
 
 func (b *DiscordBot) queueWorker() {
 	log.Println("[QUEUE] Starting announcement queue worker...")
@@ -66,7 +81,26 @@ func (b *DiscordBot) queueWorker() {
 				a.RetryCount,
 			)
 
-			content := b.GetMentionsForText(a.Comment.Message, a.MentionsDisable)
+			var content string
+			var monitorCfg config.MonitorConfig
+			if inner, ok := b.Config.Monitors[a.Service]; ok {
+				monitorCfg = inner[a.TorrentID]
+			}
+
+			if isNotification && monitorCfg.CustomFormat != "" {
+				tplData := map[string]any{
+					"Message": a.Comment.Message,
+				}
+				if rendered, err := renderNekoBTNotificationFormat(monitorCfg.CustomFormat, tplData); err == nil {
+					content = rendered
+				} else {
+					log.Printf("[QUEUE] Error rendering custom format for notification: %v", err)
+					content = b.GetMentionsForText(a.Comment.Message, a.MentionsDisable)
+				}
+			} else {
+				content = b.GetMentionsForText(a.Comment.Message, a.MentionsDisable)
+			}
+
 			msgSend := &discordgo.MessageSend{
 				Content: content,
 				Embeds: []*discordgo.MessageEmbed{

@@ -279,6 +279,7 @@ If you define a monitor block with the keyname `notification` or `notifications`
 - **Interactive Buttons**: The Discord announcement sent for each notification includes a "Mark as Read" button.
 - **Access Control**: Only authorized administrators or moderators (based on the bot's permission rules) are allowed to click the button and mark the notification as read.
 - **PII Leakage Prevention**: It is highly recommended to override the target channel (using `discord.channel = "CHANNEL_ID"`) inside the notification monitor block to route these private alerts to a restricted/private channel.
+- **Custom Formatting & Mentions**: You can configure a `custom_format` template string (e.g. `custom_format = "<@1234567890> — {{.Message}}"`) to override the plain-text message body. This allows you to tag specific users or roles. The only supported template variable is `{{.Message}}` which resolves to the notification content.
 
 #### Mention Mapping (`discord.mentions`)
 
